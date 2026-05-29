@@ -8,7 +8,7 @@ import './index.css';
 
 // Firebase
 import { auth, db, provider } from './firebase';
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth';
+import { signInWithRedirect, signOut, onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 
 function App() {
@@ -42,7 +42,7 @@ function App() {
       return;
     }
     try {
-      await signInWithPopup(auth, provider);
+      await signInWithRedirect(auth, provider);
     } catch (error) {
       console.error(error);
     }
