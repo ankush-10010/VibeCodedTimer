@@ -6,10 +6,10 @@ import SpotifyWidget from './components/SpotifyWidget';
 import StatsWidget from './components/StatsWidget';
 import './index.css';
 
-// Firebase
-import { auth, db, provider } from './firebase';
-import { signInWithRedirect, signOut, onAuthStateChanged } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+// Clerk & Convex
+import { useUser, SignInButton, UserButton } from '@clerk/clerk-react';
+import { useMutation } from 'convex/react';
+import { api } from '../convex/_generated/api';
 
 function App() {
   const { mode, isRunning, timeRemaining, timeElapsed, dailyTotal, laps, start, pause, reset, lap, setMode, setDuration, formatTime } = useTimer();
@@ -26,55 +26,27 @@ function App() {
   const [showStats, setShowStats] = useState(false);
 
   // Auth State
-  const [user, setUser] = useState(null);
+  const { user } = useUser();
+  const syncStats = useMutation(api.stats.syncDailyTotal);
 
+  // Sync dailyTotal to Convex when timer pauses/stops
   useEffect(() => {
-    if (!auth) return;
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const handleLogin = async () => {
-    if (!auth) {
-      alert("Please configure Firebase in .env.local first!");
-      return;
-    }
-    try {
-      await signInWithRedirect(auth, provider);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleLogout = async () => {
-    if (!auth) return;
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  // Sync dailyTotal to Firestore when timer pauses/stops
-  useEffect(() => {
-    if (user && db && !isRunning && dailyTotal > 0) {
+    if (user && !isRunning && dailyTotal > 0) {
       const syncData = async () => {
         try {
           const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-          const docRef = doc(db, 'users', user.uid, 'stats', today);
-          await setDoc(docRef, {
+          await syncStats({
             date: today,
-            totalMs: dailyTotal
-          }, { merge: true });
+            totalMs: dailyTotal,
+            laps: laps // Send laps array to Convex
+          });
         } catch (err) {
-          console.error("Failed to sync stats to Firestore:", err);
+          console.error("Failed to sync stats to Convex:", err);
         }
       };
       syncData();
     }
-  }, [isRunning, user, dailyTotal]);
+  }, [isRunning, user, dailyTotal, laps]);
 
   useEffect(() => {
     const timerId = setInterval(() => {
@@ -265,13 +237,15 @@ function App() {
           <div className="glass-panel rounded-[2rem] p-3 flex flex-col gap-3 shadow-2xl border border-white/20 animate-fade-in origin-bottom-right">
             
             {user ? (
-              <button onClick={handleLogout} className="text-on-surface-variant hover:text-error transition-all p-2 rounded-full flex items-center justify-center" title="Logout">
-                <img src={user.photoURL || `https://ui-avatars.com/api/?name=${user.email}`} alt="Profile" className="w-6 h-6 rounded-full" />
-              </button>
+              <div className="flex items-center justify-center p-2">
+                <UserButton afterSignOutUrl="/" />
+              </div>
             ) : (
-              <button onClick={handleLogin} className="text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex items-center justify-center" title="Login with Google">
-                <span className="material-symbols-outlined text-[20px]">login</span>
-              </button>
+              <SignInButton mode="modal">
+                <button className="text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex items-center justify-center" title="Login with Clerk">
+                  <span className="material-symbols-outlined text-[20px]">login</span>
+                </button>
+              </SignInButton>
             )}
 
             <button className="text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex items-center justify-center" title="Themes">

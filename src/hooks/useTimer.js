@@ -2,14 +2,26 @@ import { useState, useEffect, useRef } from 'react';
 import { FocusTimer } from '../logic/Timer';
 
 export function useTimer() {
-    const [timerState, setTimerState] = useState({
-        mode: 'stopwatch',
-        isRunning: false,
-        timeRemaining: 25 * 60 * 1000,
-        timeElapsed: 0,
-        dailyTotal: 0,
-        laps: []
-    });
+    const getInitialState = () => {
+        const defaultState = {
+            mode: 'stopwatch',
+            isRunning: false,
+            timeRemaining: 25 * 60 * 1000,
+            timeElapsed: 0,
+            dailyTotal: 0,
+            laps: []
+        };
+        const saved = localStorage.getItem('focusTimerState');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                return { ...defaultState, ...parsed, isRunning: false }; // We let the Timer class handle calculating catch-up time and updating the isRunning state
+            } catch(e) {}
+        }
+        return defaultState;
+    };
+
+    const [timerState, setTimerState] = useState(getInitialState);
 
     const timerRef = useRef(null);
 

@@ -1,60 +1,48 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { collection, query, getDocs, orderBy, limit } from 'firebase/firestore';
-import { db } from '../firebase';
+import { useQuery } from 'convex/react';
+import { api } from '../../convex/_generated/api';
 
 export default function StatsWidget({ onClose, user }) {
+  const fetchedData = useQuery(api.stats.getStats, user ? undefined : "skip");
+  
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      
-      try {
-        const statsRef = collection(db, 'users', user.uid, 'stats');
-        const q = query(statsRef, orderBy('date', 'desc'), limit(7));
-        const querySnapshot = await getDocs(q);
-        
-        const fetchedData = [];
-        querySnapshot.forEach((doc) => {
-          fetchedData.push(doc.data());
-        });
-
-        // Reverse so chronological order left to right
-        fetchedData.reverse();
-
-        // If no data, provide dummy data for visualization
-        if (fetchedData.length === 0) {
-          const dummy = [];
-          for(let i=6; i>=0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            dummy.push({
-              date: d.toLocaleDateString('en-US', { weekday: 'short' }),
-              focusTimeMinutes: 0
-            });
-          }
-          setData(dummy);
-        } else {
-          // Format data for Recharts
-          const formatted = fetchedData.map(d => ({
-            date: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
-            focusTimeMinutes: Math.round(d.totalMs / 60000)
-          }));
-          setData(formatted);
-        }
-      } catch (error) {
-        console.error("Error fetching stats:", error);
-      }
+    if (!user) {
       setLoading(false);
-    };
+      return;
+    }
+    
+    if (fetchedData === undefined) {
+      setLoading(true);
+      return;
+    }
 
-    fetchStats();
-  }, [user]);
+    const rawData = [...fetchedData];
+    rawData.reverse();
+
+    if (rawData.length === 0) {
+      const dummy = [];
+      for(let i=6; i>=0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        dummy.push({
+          date: d.toLocaleDateString('en-US', { weekday: 'short' }),
+          focusTimeMinutes: 0
+        });
+      }
+      setData(dummy);
+    } else {
+      const formatted = rawData.map(d => ({
+        date: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
+        focusTimeMinutes: Math.round(d.totalMs / 60000)
+      }));
+      setData(formatted);
+    }
+    setLoading(false);
+  }, [fetchedData, user]);
 
   return (
     <div className="absolute bottom-20 right-0 w-[400px] glass-panel rounded-2xl p-6 shadow-2xl animate-fade-in border border-white/20 z-50 flex flex-col h-[300px] mb-4 origin-bottom-right">
