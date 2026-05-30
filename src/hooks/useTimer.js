@@ -49,10 +49,10 @@ export function useTimer() {
     const setMode = (mode) => timerRef.current?.setMode(mode);
     const setDuration = (seconds) => timerRef.current?.setDuration(seconds);
 
-    // Format MS into MM:SS:CC (centiseconds) or HH:MM:SS:CC
+    // Format MS into MM:SS.d (tenths) or H:MM:SS.d
     const formatTime = (totalMs) => {
         const totalSeconds = Math.floor(totalMs / 1000);
-        const centiseconds = Math.floor((totalMs % 1000) / 10);
+        const tenths = Math.floor((totalMs % 1000) / 100);
         
         const h = Math.floor(totalSeconds / 3600);
         const m = Math.floor((totalSeconds % 3600) / 60);
@@ -61,9 +61,9 @@ export function useTimer() {
         const pad = (num) => num.toString().padStart(2, '0');
 
         if (h > 0) {
-            return `${h}:${pad(m)}:${pad(s)}`; // Don't show MS if over an hour to save space
+            return `${h}:${pad(m)}:${pad(s)}.${tenths}`;
         }
-        return `${pad(m)}:${pad(s)}:${pad(centiseconds)}`;
+        return `${pad(m)}:${pad(s)}.${tenths}`;
     };
 
     return {

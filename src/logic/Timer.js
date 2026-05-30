@@ -1,3 +1,16 @@
+export function getLogicalDateStr() {
+    const now = new Date();
+    // Shift back by 4 hours
+    const shifted = new Date(now.getTime() - 4 * 60 * 60 * 1000);
+    // Convert to IST string (Asia/Kolkata is UTC+5:30)
+    const options = { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' };
+    const parts = new Intl.DateTimeFormat('en-GB', options).formatToParts(shifted);
+    const day = parts.find(p => p.type === 'day').value;
+    const month = parts.find(p => p.type === 'month').value;
+    const year = parts.find(p => p.type === 'year').value;
+    return `${year}-${month}-${day}`;
+}
+
 export class FocusTimer {
     constructor(onTickCallback, onCompleteCallback) {
         this.mode = 'stopwatch'; // 'pomodoro' | 'stopwatch' | 'break'
@@ -7,7 +20,7 @@ export class FocusTimer {
         this.laps = []; // Array to store lap times
         this.isRunning = false;
 
-        this.currentDate = new Date().toISOString().split('T')[0];
+        this.currentDate = getLogicalDateStr();
 
         const savedState = localStorage.getItem('focusTimerState');
         if (savedState) {
@@ -57,7 +70,7 @@ export class FocusTimer {
     }
 
     checkDate() {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getLogicalDateStr();
         if (this.currentDate !== today) {
             this.dailyTotal = 0;
             this.laps = [];

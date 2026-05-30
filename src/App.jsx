@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTimer } from './hooks/useTimer';
+import { getLogicalDateStr } from './logic/Timer';
 import TodoWidget from './components/TodoWidget';
 import NotesWidget from './components/NotesWidget';
 import SpotifyWidget from './components/SpotifyWidget';
@@ -34,7 +35,7 @@ function App() {
     if (user && !isRunning && dailyTotal > 0) {
       const syncData = async () => {
         try {
-          const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+          const today = getLogicalDateStr(); // YYYY-MM-DD based on 4 AM IST
           await syncStats({
             date: today,
             totalMs: dailyTotal,

@@ -25,18 +25,22 @@ export default function StatsWidget({ onClose, user }) {
 
     if (rawData.length === 0) {
       const dummy = [];
+      // Use logical date for consistency
+      const d = new Date();
+      d.setTime(d.getTime() - 4 * 60 * 60 * 1000); // shift 4 hours to match logical day progression roughly
       for(let i=6; i>=0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
+        const past = new Date(d);
+        past.setDate(past.getDate() - i);
         dummy.push({
-          date: d.toLocaleDateString('en-US', { weekday: 'short' }),
+          date: past.toLocaleDateString('en-US', { weekday: 'short' }),
           focusTimeMinutes: 0
         });
       }
       setData(dummy);
     } else {
       const formatted = rawData.map(d => ({
-        date: new Date(d.date).toLocaleDateString('en-US', { weekday: 'short' }),
+        // parse string like "2024-05-30" with a midday time to avoid timezone offset issues
+        date: new Date(`${d.date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short' }),
         focusTimeMinutes: Math.round(d.totalMs / 60000)
       }));
       setData(formatted);
