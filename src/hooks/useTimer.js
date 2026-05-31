@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { FocusTimer } from '../logic/Timer';
+import { FocusTimer, getLogicalDateStr } from '../logic/Timer';
 
 export function useTimer() {
     const getInitialState = () => {
@@ -15,7 +15,12 @@ export function useTimer() {
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                return { ...defaultState, ...parsed, isRunning: false }; // We let the Timer class handle calculating catch-up time and updating the isRunning state
+                // Check if the saved state is from today (logical date based on 4AM IST)
+                if (parsed.currentDate === getLogicalDateStr()) {
+                    return { ...defaultState, ...parsed, isRunning: false };
+                }
+                // If it's a new day, return default state but maybe keep the mode
+                return { ...defaultState, mode: parsed.mode || 'stopwatch' };
             } catch(e) {}
         }
         return defaultState;

@@ -27,30 +27,36 @@ export class FocusTimer {
             try {
                 const parsed = JSON.parse(savedState);
                 this.mode = parsed.mode || this.mode;
-                this.timeRemaining = parsed.timeRemaining !== undefined ? parsed.timeRemaining : this.timeRemaining;
-                this.timeElapsed = parsed.timeElapsed || 0;
                 
-                // Only load dailyTotal and laps if the date matches today
                 if (parsed.currentDate === this.currentDate) {
+                    this.timeRemaining = parsed.timeRemaining !== undefined ? parsed.timeRemaining : this.timeRemaining;
+                    this.timeElapsed = parsed.timeElapsed || 0;
                     this.dailyTotal = parsed.dailyTotal || 0;
                     this.laps = parsed.laps || [];
-                }
-                
-                // If it was running when closed, catch up
-                if (parsed.isRunning && parsed.lastTickTime) {
-                    const now = Date.now();
-                    const delta = now - parsed.lastTickTime;
-                    
-                    if (this.mode === 'stopwatch') {
-                        this.timeElapsed += delta;
-                        this.dailyTotal += delta;
-                    } else if (this.mode === 'pomodoro' || this.mode === 'break') {
-                        this.timeRemaining -= delta;
-                        if (this.mode === 'pomodoro') this.dailyTotal += delta;
-                        if (this.timeRemaining <= 0) {
-                            this.timeRemaining = 0;
+
+                    // If it was running when closed, catch up
+                    if (parsed.isRunning && parsed.lastTickTime) {
+                        const now = Date.now();
+                        const delta = now - parsed.lastTickTime;
+                        
+                        if (this.mode === 'stopwatch') {
+                            this.timeElapsed += delta;
+                            this.dailyTotal += delta;
+                        } else if (this.mode === 'pomodoro' || this.mode === 'break') {
+                            this.timeRemaining -= delta;
+                            if (this.mode === 'pomodoro') this.dailyTotal += delta;
+                            if (this.timeRemaining <= 0) {
+                                this.timeRemaining = 0;
+                            }
                         }
                     }
+                } else {
+                    // It's a new day! Reset everything to 0 or defaults.
+                    this.dailyTotal = 0;
+                    this.laps = [];
+                    this.timeElapsed = 0;
+                    if (this.mode === 'pomodoro') this.timeRemaining = 25 * 60 * 1000;
+                    else if (this.mode === 'break') this.timeRemaining = 10 * 60 * 1000;
                 }
             } catch (e) {
                 console.error("Failed to parse timer state", e);
@@ -67,16 +73,20 @@ export class FocusTimer {
         if (this.timeRemaining <= 0 && this.mode !== 'stopwatch') {
             setTimeout(() => this.onComplete(), 0);
         }
+
+        // Periodically check for date rollover (4 AM IST)
+        setInterval(() => this.checkDate(), 1000);
+        
+        // Ensure UI is updated immediately on load
+        setTimeout(() => this.onTick(this.getState()), 0);
     }
 
     checkDate() {
         const today = getLogicalDateStr();
         if (this.currentDate !== today) {
             this.dailyTotal = 0;
-            this.laps = [];
             this.currentDate = today;
-            this.saveState();
-            this.onTick(this.getState());
+            this.reset(); // This resets timeElapsed, laps, timeRemaining based on mode, pauses the timer, saves state, and calls onTick
         }
     }
 
