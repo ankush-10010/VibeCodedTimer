@@ -213,4 +213,20 @@ export class FocusTimer {
             laps: this.laps
         };
     }
+
+    syncFromDb(dbDailyTotal, dbLaps) {
+        let updated = false;
+        if (dbDailyTotal > this.dailyTotal) {
+            this.dailyTotal = dbDailyTotal;
+            updated = true;
+        }
+        if (dbLaps && dbLaps.length > this.laps.length) {
+            this.laps = dbLaps;
+            updated = true;
+        }
+        if (updated) {
+            this.saveState();
+            this.onTick(this.getState());
+        }
+    }
 }

@@ -71,6 +71,8 @@ export function useTimer() {
         return `${pad(m)}:${pad(s)}.${tenths}`;
     };
 
+    const syncFromDb = (dbDailyTotal, dbLaps) => timerRef.current?.syncFromDb(dbDailyTotal, dbLaps);
+
     return {
         ...timerState,
         start,
@@ -79,6 +81,7 @@ export function useTimer() {
         lap,
         setMode,
         setDuration,
-        formatTime
+        formatTime,
+        syncFromDb
     };
 }

@@ -9,11 +9,11 @@ import './index.css';
 
 // Clerk & Convex
 import { useUser, SignInButton, UserButton } from '@clerk/clerk-react';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '../convex/_generated/api';
 
 function App() {
-  const { mode, isRunning, timeRemaining, timeElapsed, dailyTotal, laps, start, pause, reset, lap, setMode, setDuration, formatTime } = useTimer();
+  const { mode, isRunning, timeRemaining, timeElapsed, dailyTotal, laps, start, pause, reset, lap, setMode, setDuration, formatTime, syncFromDb } = useTimer();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -29,6 +29,18 @@ function App() {
   // Auth State
   const { user } = useUser();
   const syncStats = useMutation(api.stats.syncDailyTotal);
+  const dbStats = useQuery(api.stats.getStats);
+
+  // Sync dailyTotal from Convex down to local state
+  useEffect(() => {
+    if (user && dbStats) {
+      const today = getLogicalDateStr();
+      const todayStat = dbStats.find(s => s.date === today);
+      if (todayStat) {
+        syncFromDb(todayStat.totalMs || 0, todayStat.laps || []);
+      }
+    }
+  }, [user, dbStats, syncFromDb]);
 
   // Sync dailyTotal to Convex when timer pauses/stops
   useEffect(() => {
@@ -119,9 +131,9 @@ function App() {
   return (
     <>
       {/* Top Left - Lap Report */}
-      <div className="absolute top-6 left-6 z-50 flex flex-col gap-2 pointer-events-none [&>*]:pointer-events-auto">
+      <div className="absolute top-4 left-4 md:top-6 md:left-6 z-50 flex flex-col gap-2 pointer-events-none [&>*]:pointer-events-auto max-w-[80vw] md:max-w-none">
         {mode === 'stopwatch' && (
-          <div className="glass-panel p-4 rounded-xl min-w-[200px] max-h-[250px] overflow-y-auto no-scrollbar border border-white/10 shadow-lg animate-fade-in">
+          <div className="glass-panel p-3 md:p-4 rounded-xl min-w-[150px] md:min-w-[200px] max-h-[250px] overflow-y-auto no-scrollbar border border-white/10 shadow-lg animate-fade-in">
             <h3 className="text-primary font-label-caps text-label-caps mb-2 opacity-80">Lap Report</h3>
             {!laps || laps.length === 0 ? (
               <p className="text-on-surface-variant text-sm italic">No laps yet.</p>
@@ -139,8 +151,8 @@ function App() {
         )}
       </div>
 
-      <main className="flex-grow flex flex-col items-center justify-center z-10 text-center relative w-full h-full transition-opacity duration-300">
-        <h1 className="font-display-clock text-display-clock md:text-display-clock drop-shadow-2xl text-primary font-bold tracking-tighter tabular-nums" id="main-clock">
+      <main className="flex-grow flex flex-col items-center justify-center z-10 text-center relative w-full h-full transition-opacity duration-300 px-4">
+        <h1 className="font-display-clock text-display-clock-mobile md:text-display-clock drop-shadow-2xl text-primary font-bold tracking-tighter tabular-nums" id="main-clock">
           {getDisplayTime()}
         </h1>
         
@@ -205,7 +217,7 @@ function App() {
       </main>
 
       {/* Left panel widgets */}
-      <div className="absolute bottom-6 left-6 z-50 pointer-events-none [&>*]:pointer-events-auto flex flex-col gap-4">
+      <div className="absolute bottom-4 left-4 md:bottom-6 md:left-6 z-50 pointer-events-none [&>*]:pointer-events-auto flex flex-col gap-4">
         
         {/* Active Widget Render */}
         <div className="relative">
@@ -214,7 +226,7 @@ function App() {
           {activeWidget === 'notes' && <NotesWidget onClose={() => setActiveWidget(null)} />}
         </div>
 
-        <div className="glass-panel rounded-full px-4 py-2 flex gap-4 shadow-2xl border border-white/20">
+        <div className="glass-panel rounded-full px-3 md:px-4 py-2 flex gap-2 md:gap-4 shadow-2xl border border-white/20">
           <button onClick={() => setActiveWidget(activeWidget === 'tasks' ? null : 'tasks')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'tasks' ? 'bg-white/20 text-primary' : ''}`}>
             <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">check_circle</span>
           </button>
@@ -228,7 +240,7 @@ function App() {
       </div>
 
       {/* Right panel options */}
-      <div className="absolute bottom-6 right-6 z-50 flex flex-col items-end gap-2 pointer-events-none [&>*]:pointer-events-auto">
+      <div className="absolute bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col items-end gap-2 pointer-events-none [&>*]:pointer-events-auto">
         
         <div className="relative w-full">
           {showStats && <StatsWidget user={user} onClose={() => setShowStats(false)} />}
@@ -288,7 +300,7 @@ function App() {
         <div className="absolute inset-0 bg-black/50 z-[55] backdrop-blur-[2px]" onClick={() => setSidebarOpen(false)}></div>
       )}
 
-      <aside className={`fixed left-0 top-0 h-full w-[400px] bg-surface/80 backdrop-blur-[40px] border-r border-white/10 shadow-[40px_0_80px_rgba(0,0,0,0.3)] z-[60] py-container-padding flex flex-col transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`fixed left-0 top-0 h-full w-full max-w-[400px] bg-surface/90 md:bg-surface/80 backdrop-blur-[40px] border-r border-white/10 shadow-[40px_0_80px_rgba(0,0,0,0.3)] z-[60] py-container-padding flex flex-col transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="px-6 flex justify-between items-center mb-8">
           <div>
             <h1 className="font-h1 text-h1 font-bold text-primary">Focus10010</h1>
