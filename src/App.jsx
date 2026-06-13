@@ -118,15 +118,7 @@ function App() {
     }
   };
 
-  if (isFullscreen) {
-    return (
-      <main className="w-full h-full flex flex-col items-center justify-center cursor-pointer absolute inset-0 z-[100]" onClick={toggleFullscreen}>
-        <h1 className="font-display-clock drop-shadow-2xl text-primary font-bold tracking-tighter tabular-nums" style={{ fontSize: '15vw', lineHeight: '1' }}>
-          {getDisplayTime()}
-        </h1>
-      </main>
-    );
-  }
+
 
   return (
     <>
@@ -286,7 +278,7 @@ function App() {
             </button>
 
             <button onClick={toggleFullscreen} className="text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex items-center justify-center" title="Fullscreen">
-              <span className="material-symbols-outlined text-[20px]">fullscreen</span>
+              <span className="material-symbols-outlined text-[20px]">{isFullscreen ? 'fullscreen_exit' : 'fullscreen'}</span>
             </button>
           </div>
         )}
