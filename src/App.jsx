@@ -123,25 +123,27 @@ function App() {
   return (
     <>
       {/* Top Left - Lap Report */}
-      <div className="absolute top-4 left-4 md:top-6 md:left-6 z-50 flex flex-col gap-2 pointer-events-none [&>*]:pointer-events-auto max-w-[80vw] md:max-w-none">
-        {mode === 'stopwatch' && (
-          <div className="glass-panel p-3 md:p-4 rounded-xl min-w-[150px] md:min-w-[200px] max-h-[250px] overflow-y-auto no-scrollbar border border-white/10 shadow-lg animate-fade-in">
-            <h3 className="text-primary font-label-caps text-label-caps mb-2 opacity-80">Lap Report</h3>
-            {!laps || laps.length === 0 ? (
-              <p className="text-on-surface-variant text-sm italic">No laps yet.</p>
-            ) : (
-              <ul className="space-y-2">
-                {laps.map((lapTime, index) => (
-                  <li key={index} className="flex justify-between text-sm text-primary gap-4">
-                    <span className="opacity-80">Lap {index + 1}</span>
-                    <span className="tabular-nums font-mono opacity-90">{formatTime(lapTime)}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </div>
+      {!isFullscreen && (
+        <div className="absolute top-4 left-4 md:top-6 md:left-6 z-50 flex flex-col gap-2 pointer-events-none [&>*]:pointer-events-auto max-w-[80vw] md:max-w-none">
+          {mode === 'stopwatch' && (
+            <div className="glass-panel p-3 md:p-4 rounded-xl min-w-[150px] md:min-w-[200px] max-h-[250px] overflow-y-auto no-scrollbar border border-white/10 shadow-lg animate-fade-in">
+              <h3 className="text-primary font-label-caps text-label-caps mb-2 opacity-80">Lap Report</h3>
+              {!laps || laps.length === 0 ? (
+                <p className="text-on-surface-variant text-sm italic">No laps yet.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {laps.map((lapTime, index) => (
+                    <li key={index} className="flex justify-between text-sm text-primary gap-4">
+                      <span className="opacity-80">Lap {index + 1}</span>
+                      <span className="tabular-nums font-mono opacity-90">{formatTime(lapTime)}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <main className="flex-grow flex flex-col items-center justify-center z-10 text-center relative w-full h-full transition-opacity duration-300 px-4">
         <h1 className="font-display-clock text-display-clock-mobile md:text-display-clock drop-shadow-2xl text-primary font-bold tracking-tighter tabular-nums" id="main-clock">
