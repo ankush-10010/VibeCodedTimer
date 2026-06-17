@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTimer } from './hooks/useTimer';
 import { getLogicalDateStr } from './logic/Timer';
 import TodoWidget from './components/TodoWidget';
@@ -41,6 +41,29 @@ function App() {
       }
     }
   }, [user, dbStats, syncFromDb]);
+
+  // Track latest stats for periodic syncing
+  const latestStats = useRef({ dailyTotal, laps });
+  useEffect(() => {
+    latestStats.current = { dailyTotal, laps };
+  }, [dailyTotal, laps]);
+
+  // Periodic sync to Convex every 10 seconds while running
+  useEffect(() => {
+    if (!user) return;
+    const intervalId = setInterval(() => {
+      const { dailyTotal: currentTotal, laps: currentLaps } = latestStats.current;
+      if (isRunning && currentTotal > 0) {
+        const today = getLogicalDateStr();
+        syncStats({
+          date: today,
+          totalMs: currentTotal,
+          laps: currentLaps
+        }).catch(err => console.error("Periodic sync failed:", err));
+      }
+    }, 10000);
+    return () => clearInterval(intervalId);
+  }, [user, isRunning, syncStats]);
 
   // Sync dailyTotal to Convex when timer pauses/stops
   useEffect(() => {
