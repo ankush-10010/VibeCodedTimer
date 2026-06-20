@@ -39,21 +39,27 @@ function App() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Sync URL to Mode
+  const isInitialMount = useRef(true);
+
+  // Sync URL to Mode (When user navigates via browser or links)
   useEffect(() => {
     if (location.pathname === '/' && mode !== 'home') setMode('home');
     if (location.pathname === '/stopwatch' && mode !== 'stopwatch') setMode('stopwatch');
     if (location.pathname === '/timer' && mode !== 'pomodoro') setMode('pomodoro');
-    if (location.pathname === '/break' && mode !== 'break') setMode('break');
+    if (location.pathname === '/break' && mode !== 'break' && mode !== 'shortBreak' && mode !== 'longBreak') setMode('shortBreak');
   }, [location.pathname, mode, setMode]);
 
-  // Sync Mode to URL
+  // Sync Mode to URL (When timer auto-chains or mode changes internally)
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     if (mode === 'home' && location.pathname !== '/') navigate('/');
     if (mode === 'stopwatch' && location.pathname !== '/stopwatch') navigate('/stopwatch');
     if (mode === 'pomodoro' && location.pathname !== '/timer') navigate('/timer');
-    if (mode === 'break' && location.pathname !== '/break') navigate('/break');
-  }, [mode, location.pathname, navigate]);
+    if ((mode === 'break' || mode === 'shortBreak' || mode === 'longBreak') && location.pathname !== '/break') navigate('/break');
+  }, [mode, navigate, location.pathname]);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
