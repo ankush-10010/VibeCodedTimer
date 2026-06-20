@@ -203,6 +203,43 @@ export class FocusTimer {
         this.onTick(this.getState());
     }
 
+    static playChime() {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const now = ctx.currentTime;
+            
+            // Create two oscillators for a bell-like tone
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const gain = ctx.createGain();
+            
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(880, now);
+            osc1.frequency.exponentialRampToValueAtTime(440, now + 0.5);
+            
+            osc2.type = 'sine';
+            osc2.frequency.setValueAtTime(1320, now);
+            osc2.frequency.exponentialRampToValueAtTime(660, now + 0.5);
+            
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.3, now + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 1.0);
+            
+            osc1.connect(gain);
+            osc2.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc1.start(now);
+            osc2.start(now);
+            osc1.stop(now + 1.0);
+            osc2.stop(now + 1.0);
+            
+            setTimeout(() => ctx.close(), 1500);
+        } catch (e) {
+            console.warn('Could not play chime:', e);
+        }
+    }
+
     getState() {
         return {
             mode: this.mode,

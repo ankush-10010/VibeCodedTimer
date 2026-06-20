@@ -50,3 +50,21 @@ export const getStats = query({
     return stats;
   },
 });
+
+export const getStreakStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return [];
+    }
+
+    const stats = await ctx.db
+      .query("stats")
+      .withIndex("by_user_date", (q) => q.eq("userId", identity.subject))
+      .order("desc")
+      .take(90);
+      
+    return stats;
+  },
+});

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { FocusTimer, getLogicalDateStr } from '../logic/Timer';
 
 export function useTimer() {
@@ -15,11 +15,9 @@ export function useTimer() {
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                // Check if the saved state is from today (logical date based on 4AM IST)
                 if (parsed.currentDate === getLogicalDateStr()) {
                     return { ...defaultState, ...parsed, isRunning: false };
                 }
-                // If it's a new day, return default state but maybe keep the mode
                 return { ...defaultState, mode: parsed.mode || 'stopwatch' };
             } catch(e) {}
         }
@@ -27,7 +25,7 @@ export function useTimer() {
     };
 
     const [timerState, setTimerState] = useState(getInitialState);
-
+    const [showShortcuts, setShowShortcuts] = useState(false);
     const timerRef = useRef(null);
 
     useEffect(() => {
@@ -36,9 +34,25 @@ export function useTimer() {
                 setTimerState(prevState => ({ ...prevState, ...newState }));
             },
             () => {
-                console.log("Timer completed!");
+                // Play chime sound
+                FocusTimer.playChime();
+                
+                // Send desktop notification
+                const currentMode = timerRef.current?.mode;
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    const title = currentMode === 'break' ? 'Break Over!' : 'Focus Complete!';
+                    const body = currentMode === 'break' 
+                        ? "Break's over! Ready to focus? 💪" 
+                        : 'Focus session complete! Time for a break 🎉';
+                    new Notification(title, { body, icon: '/favicon.png' });
+                }
             }
         );
+
+        // Request notification permission
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
 
         return () => {
             if (timerRef.current) {
@@ -46,6 +60,80 @@ export function useTimer() {
             }
         };
     }, []);
+
+    // Tab title updates
+    useEffect(() => {
+        const { mode, isRunning, timeRemaining, timeElapsed } = timerState;
+        
+        if (mode === 'home' || (!isRunning && mode === 'stopwatch' && timeElapsed === 0)) {
+            document.title = 'Focus10010';
+            return;
+        }
+        
+        if (!isRunning) {
+            document.title = '⏸ Paused — Focus10010';
+            return;
+        }
+        
+        const ms = (mode === 'stopwatch') ? timeElapsed : timeRemaining;
+        const totalSeconds = Math.floor(ms / 1000);
+        const m = Math.floor(totalSeconds / 60);
+        const s = totalSeconds % 60;
+        const pad = (n) => n.toString().padStart(2, '0');
+        document.title = `⏱ ${pad(m)}:${pad(s)} — Focus10010`;
+    }, [timerState]);
+
+    // Keyboard shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Don't trigger shortcuts when typing in inputs
+            const tag = e.target.tagName.toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
+
+            switch (e.key) {
+                case ' ':
+                    e.preventDefault();
+                    if (timerState.mode !== 'home') {
+                        timerState.isRunning ? timerRef.current?.pause() : timerRef.current?.start();
+                    }
+                    break;
+                case 'r':
+                case 'R':
+                    if (timerState.mode === 'pomodoro' || timerState.mode === 'break') {
+                        timerRef.current?.reset();
+                    }
+                    break;
+                case 'f':
+                case 'F':
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(() => {});
+                    } else {
+                        document.exitFullscreen?.();
+                    }
+                    break;
+                case '1':
+                    timerRef.current?.setMode('pomodoro');
+                    break;
+                case '2':
+                    timerRef.current?.setMode('break');
+                    break;
+                case '3':
+                    timerRef.current?.setMode('stopwatch');
+                    break;
+                case '0':
+                    timerRef.current?.setMode('home');
+                    break;
+                case '?':
+                    setShowShortcuts(prev => !prev);
+                    break;
+                default:
+                    break;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [timerState.mode, timerState.isRunning]);
 
     const start = () => timerRef.current?.start();
     const pause = () => timerRef.current?.pause();
@@ -82,6 +170,8 @@ export function useTimer() {
         setMode,
         setDuration,
         formatTime,
-        syncFromDb
+        syncFromDb,
+        showShortcuts,
+        setShowShortcuts
     };
 }

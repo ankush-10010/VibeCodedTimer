@@ -5,6 +5,9 @@ import TodoWidget from './components/TodoWidget';
 import NotesWidget from './components/NotesWidget';
 import SpotifyWidget from './components/SpotifyWidget';
 import StatsWidget from './components/StatsWidget';
+import AmbientSoundWidget from './components/AmbientSoundWidget';
+import DailyGoalRing from './components/DailyGoalRing';
+import StreakBadge from './components/StreakBadge';
 import './index.css';
 
 // Clerk & Convex
@@ -13,7 +16,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '../convex/_generated/api';
 
 function App() {
-  const { mode, isRunning, timeRemaining, timeElapsed, dailyTotal, laps, start, pause, reset, lap, setMode, setDuration, formatTime, syncFromDb } = useTimer();
+  const { mode, isRunning, timeRemaining, timeElapsed, dailyTotal, laps, start, pause, reset, lap, setMode, setDuration, formatTime, syncFromDb, showShortcuts, setShowShortcuts } = useTimer();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -23,8 +26,54 @@ function App() {
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   
-  const [activeWidget, setActiveWidget] = useState(null); // 'tasks' | 'music' | 'notes' | null
+  const [activeWidget, setActiveWidget] = useState(null); // 'tasks' | 'music' | 'notes' | 'ambient' | null
   const [showStats, setShowStats] = useState(false);
+
+  // Quotes system
+  const QUOTES = [
+    "The secret of getting ahead is getting started.",
+    "Focus on being productive instead of busy.",
+    "Do what you can, with what you have, where you are.",
+    "It's not about having time, it's about making time.",
+    "Small daily improvements lead to stunning results.",
+    "Your focus determines your reality.",
+    "Deep work is the superpower of the 21st century.",
+    "The only way to do great work is to love what you do.",
+    "Discipline is choosing between what you want now and what you want most.",
+    "Don't count the days, make the days count.",
+    "Success is the sum of small efforts repeated day in and day out.",
+    "You don't have to be great to start, but you have to start to be great.",
+    "The mind is everything. What you think, you become.",
+    "Action is the foundational key to all success.",
+    "Starve your distractions, feed your focus.",
+    "Be so good they can't ignore you.",
+    "Progress, not perfection.",
+    "One hour of focused work beats three hours of distracted effort.",
+    "The best time to plant a tree was 20 years ago. The second best time is now.",
+    "You are what you repeatedly do. Excellence is not an act, but a habit."
+  ];
+  const [currentQuote, setCurrentQuote] = useState(() => QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+  const [quoteVisible, setQuoteVisible] = useState(true);
+
+  useEffect(() => {
+    if (mode !== 'home') return;
+    const interval = setInterval(() => {
+      setQuoteVisible(false);
+      setTimeout(() => {
+        setCurrentQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+        setQuoteVisible(true);
+      }, 700);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [mode]);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Good morning';
+    if (hour >= 12 && hour < 17) return 'Good afternoon';
+    if (hour >= 17 && hour < 21) return 'Good evening';
+    return 'Good night';
+  };
 
   // Auth State
   const { user } = useUser();
@@ -168,13 +217,28 @@ function App() {
         </div>
       )}
 
+      {/* Top Right - Daily Goal + Streak */}
+      {!isFullscreen && (
+        <div className="absolute top-4 right-4 md:top-6 md:right-6 z-50 flex items-start gap-3 pointer-events-none [&>*]:pointer-events-auto">
+          <DailyGoalRing dailyTotal={dailyTotal} formatTime={formatTime} />
+          <StreakBadge user={user} />
+        </div>
+      )}
+
       <main className="flex-grow flex flex-col items-center justify-center z-10 text-center relative w-full h-full transition-opacity duration-300 px-4">
         <h1 className="font-display-clock text-display-clock-mobile md:text-display-clock drop-shadow-2xl text-primary font-bold tracking-tighter tabular-nums" id="main-clock">
           {getDisplayTime()}
         </h1>
         
         {mode === 'home' && (
-          <p className="font-body-lg text-body-lg text-primary opacity-70 mt-stack-md font-light tracking-wide italic">"Believe in the power of your dreams"</p>
+          <div className="mt-stack-md flex flex-col items-center gap-3 animate-fade-in">
+            <p className="font-h2 text-h2 text-primary font-medium tracking-wide">
+              {getGreeting()}{user?.firstName ? `, ${user.firstName}` : ''}
+            </p>
+            <p className="font-body-lg text-body-lg text-primary/60 font-light tracking-wide italic max-w-md transition-opacity duration-700" style={{opacity: quoteVisible ? 1 : 0}}>
+              "{currentQuote}"
+            </p>
+          </div>
         )}
 
         {mode !== 'home' && (
@@ -241,6 +305,7 @@ function App() {
           {activeWidget === 'tasks' && <TodoWidget onClose={() => setActiveWidget(null)} />}
           {activeWidget === 'music' && <SpotifyWidget onClose={() => setActiveWidget(null)} />}
           {activeWidget === 'notes' && <NotesWidget onClose={() => setActiveWidget(null)} />}
+          {activeWidget === 'ambient' && <AmbientSoundWidget onClose={() => setActiveWidget(null)} />}
         </div>
 
         <div className="glass-panel rounded-full px-3 md:px-4 py-2 flex gap-2 md:gap-4 shadow-2xl border border-white/20">
@@ -252,6 +317,9 @@ function App() {
           </button>
           <button onClick={() => setActiveWidget(activeWidget === 'notes' ? null : 'notes')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'notes' ? 'bg-white/20 text-primary' : ''}`}>
             <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">edit_note</span>
+          </button>
+          <button onClick={() => setActiveWidget(activeWidget === 'ambient' ? null : 'ambient')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'ambient' ? 'bg-white/20 text-primary' : ''}`}>
+            <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">spa</span>
           </button>
         </div>
       </div>
@@ -363,6 +431,38 @@ function App() {
             </section>
         </div>
       </aside>
+
+      {/* Keyboard Shortcuts Overlay */}
+      {showShortcuts && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowShortcuts(false)}>
+          <div className="glass-panel rounded-2xl p-6 shadow-2xl border border-white/20 animate-fade-in max-w-sm w-full mx-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="font-h2 text-h2 text-primary">Keyboard Shortcuts</h3>
+              <button onClick={() => setShowShortcuts(false)} className="text-on-surface-variant hover:text-primary transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="space-y-3">
+              {[
+                ['Space', 'Play / Pause'],
+                ['R', 'Reset timer'],
+                ['F', 'Toggle fullscreen'],
+                ['1', 'Focus mode'],
+                ['2', 'Break mode'],
+                ['3', 'Stopwatch mode'],
+                ['0', 'Home'],
+                ['?', 'Show shortcuts'],
+              ].map(([key, desc]) => (
+                <div key={key} className="flex justify-between items-center">
+                  <span className="text-sm text-on-surface-variant">{desc}</span>
+                  <kbd className="px-2.5 py-1 rounded-lg bg-white/10 text-primary text-xs font-mono border border-white/20 min-w-[36px] text-center">{key}</kbd>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-on-surface-variant mt-4 text-center opacity-60">Press ? to toggle this overlay</p>
+          </div>
+        </div>
+      )}
     </>
   );
 }
