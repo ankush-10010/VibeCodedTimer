@@ -38,28 +38,30 @@ function App() {
 
   const location = useLocation();
   const navigate = useNavigate();
-
-  const isInitialMount = useRef(true);
-
-  // Sync URL to Mode (When user navigates via browser or links)
-  useEffect(() => {
-    if (location.pathname === '/' && mode !== 'home') setMode('home');
-    if (location.pathname === '/stopwatch' && mode !== 'stopwatch') setMode('stopwatch');
-    if (location.pathname === '/timer' && mode !== 'pomodoro') setMode('pomodoro');
-    if (location.pathname === '/break' && mode !== 'break' && mode !== 'shortBreak' && mode !== 'longBreak') setMode('shortBreak');
-  }, [location.pathname, mode, setMode]);
+  const modeRef = useRef(mode);
+  const pathRef = useRef(location.pathname);
 
   // Sync Mode to URL (When timer auto-chains or mode changes internally)
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
+    if (mode !== modeRef.current) {
+      modeRef.current = mode;
+      if (mode === 'home' && location.pathname !== '/') navigate('/');
+      if (mode === 'stopwatch' && location.pathname !== '/stopwatch') navigate('/stopwatch');
+      if (mode === 'pomodoro' && location.pathname !== '/timer') navigate('/timer');
+      if ((mode === 'break' || mode === 'shortBreak' || mode === 'longBreak') && location.pathname !== '/break') navigate('/break');
     }
-    if (mode === 'home' && location.pathname !== '/') navigate('/');
-    if (mode === 'stopwatch' && location.pathname !== '/stopwatch') navigate('/stopwatch');
-    if (mode === 'pomodoro' && location.pathname !== '/timer') navigate('/timer');
-    if ((mode === 'break' || mode === 'shortBreak' || mode === 'longBreak') && location.pathname !== '/break') navigate('/break');
   }, [mode, navigate, location.pathname]);
+
+  // Sync URL to Mode (When user navigates via browser or links)
+  useEffect(() => {
+    if (location.pathname !== pathRef.current) {
+      pathRef.current = location.pathname;
+      if (location.pathname === '/' && mode !== 'home') setMode('home');
+      if (location.pathname === '/stopwatch' && mode !== 'stopwatch') setMode('stopwatch');
+      if (location.pathname === '/timer' && mode !== 'pomodoro') setMode('pomodoro');
+      if (location.pathname === '/break' && mode !== 'break' && mode !== 'shortBreak' && mode !== 'longBreak') setMode('shortBreak');
+    }
+  }, [location.pathname, mode, setMode]);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
