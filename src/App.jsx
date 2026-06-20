@@ -15,6 +15,7 @@ import './index.css';
 import { useUser, SignInButton, UserButton } from '@clerk/clerk-react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../convex/_generated/api';
+import { Routes, Route, Navigate, NavLink, useNavigate, useLocation } from 'react-router-dom';
 
 function App() {
   const { mode, isRunning, timeRemaining, timeElapsed, dailyTotal, laps, tags, currentTag, start, pause, reset, lap, setMode, setTag, setDuration, formatTime, syncFromDb, showShortcuts, setShowShortcuts, autoChain, setAutoChain, focusMode, setFocusMode } = useTimer();
@@ -34,6 +35,25 @@ function App() {
   const [customColor, setCustomColor] = useState(() => localStorage.getItem('flocus-custom-color') || '#FFEE00');
   const [backgroundType, setBackgroundType] = useState(() => localStorage.getItem('flocus-background') || 'breathe');
   const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Sync URL to Mode
+  useEffect(() => {
+    if (location.pathname === '/' && mode !== 'home') setMode('home');
+    if (location.pathname === '/stopwatch' && mode !== 'stopwatch') setMode('stopwatch');
+    if (location.pathname === '/timer' && mode !== 'pomodoro') setMode('pomodoro');
+    if (location.pathname === '/break' && mode !== 'break') setMode('break');
+  }, [location.pathname, mode, setMode]);
+
+  // Sync Mode to URL
+  useEffect(() => {
+    if (mode === 'home' && location.pathname !== '/') navigate('/');
+    if (mode === 'stopwatch' && location.pathname !== '/stopwatch') navigate('/stopwatch');
+    if (mode === 'pomodoro' && location.pathname !== '/timer') navigate('/timer');
+    if (mode === 'break' && location.pathname !== '/break') navigate('/break');
+  }, [mode, location.pathname, navigate]);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e) => {
@@ -240,7 +260,75 @@ function App() {
     }
   };
 
+  const timerWidgetUi = (
+    <div className="flex flex-col items-center mt-stack-md glass-panel p-glass-padding rounded-lg">
+      
+      {(mode === 'pomodoro' || mode === 'break') && (
+        <div className="flex gap-2 mb-6 flex-wrap justify-center">
+          {mode === 'pomodoro' && (
+            <>
+              <div className="relative group mr-2">
+                <select 
+                  value={currentTag} 
+                  onChange={(e) => setTag(e.target.value)} 
+                  className="appearance-none bg-white/10 hover:bg-white/20 border border-white/20 rounded-full py-1 pl-4 pr-8 text-primary text-sm focus:outline-none focus:border-white/40 cursor-pointer transition-colors backdrop-blur-md"
+                >
+                  <option className="bg-surface text-primary" value="Work">Work</option>
+                  <option className="bg-surface text-primary" value="Study">Study</option>
+                  <option className="bg-surface text-primary" value="Code">Code</option>
+                  <option className="bg-surface text-primary" value="Rest">Rest</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-primary">
+                  <span className="material-symbols-outlined text-[16px]">expand_more</span>
+                </div>
+              </div>
+              <button onClick={() => handlePresetClick(25)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">25m</button>
+              <button onClick={() => handlePresetClick(60)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">1h</button>
+              <button onClick={() => handlePresetClick(180)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">3h</button>
+            </>
+          )}
+          {mode === 'break' && (
+            <>
+              <button onClick={() => handlePresetClick(10)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">10m</button>
+              <button onClick={() => handlePresetClick(15)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">15m</button>
+              <button onClick={() => handlePresetClick(30)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">30m</button>
+            </>
+          )}
+          <button onClick={() => setShowCustomInput(!showCustomInput)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">Custom</button>
+        </div>
+      )}
 
+      {showCustomInput && (mode === 'pomodoro' || mode === 'break') && (
+        <form onSubmit={handleCustomSubmit} className="flex gap-2 mb-6">
+          <input 
+            type="number" 
+            min="1"
+            value={customMinutes}
+            onChange={(e) => setCustomMinutes(e.target.value)}
+            placeholder="Minutes" 
+            className="bg-black/30 border border-white/20 rounded-md px-3 py-1 text-primary w-24 text-center focus:outline-none"
+          />
+          <button type="submit" className="px-3 py-1 bg-white/20 text-primary rounded-md hover:bg-white/30">Set</button>
+        </form>
+      )}
+
+      <div className="flex items-center gap-stack-md">
+        <button onClick={isRunning ? pause : start} className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors w-12 h-12 flex items-center justify-center">
+          <span className="material-symbols-outlined text-primary">{isRunning ? 'pause' : 'play_arrow'}</span>
+        </button>
+        {mode === 'stopwatch' && (
+          <button onClick={lap} className="px-6 py-2 rounded-full border border-white/30 text-primary hover:bg-white/10 transition-colors">Lap</button>
+        )}
+        {(mode === 'pomodoro' || mode === 'break') && (
+          <button onClick={reset} className="px-6 py-2 rounded-full border border-white/30 text-primary hover:bg-white/10 transition-colors">Reset</button>
+        )}
+      </div>
+      
+      <p className="mt-stack-sm font-label-caps text-label-caps text-primary/60">
+        Total Daily Focus Time: {formatTime(dailyTotal)}
+      </p>
+    </div>
+  );
 
   return (
     <>
@@ -287,86 +375,22 @@ function App() {
           {getDisplayTime()}
         </h1>
         
-        {mode === 'home' && (
-          <div className="mt-stack-md flex flex-col items-center gap-3 animate-fade-in">
-            <p className="font-h2 text-h2 text-primary font-medium tracking-wide">
-              {getGreeting()}{user?.firstName ? `, ${user.firstName}` : ''}
-            </p>
-            <p className="font-body-lg text-body-lg text-primary/60 font-light tracking-wide italic max-w-md transition-opacity duration-700" style={{opacity: quoteVisible ? 1 : 0}}>
-              "{currentQuote}"
-            </p>
-          </div>
-        )}
-
-        {mode !== 'home' && (
-          <div className="flex flex-col items-center mt-stack-md glass-panel p-glass-padding rounded-lg">
-            
-            {(mode === 'pomodoro' || mode === 'break') && (
-              <div className="flex gap-2 mb-6 flex-wrap justify-center">
-                {mode === 'pomodoro' && (
-                  <>
-                    <div className="relative group mr-2">
-                      <select 
-                        value={currentTag} 
-                        onChange={(e) => setTag(e.target.value)} 
-                        className="appearance-none bg-white/10 hover:bg-white/20 border border-white/20 rounded-full py-1 pl-4 pr-8 text-primary text-sm focus:outline-none focus:border-white/40 cursor-pointer transition-colors backdrop-blur-md"
-                      >
-                        <option className="bg-surface text-primary" value="Work">Work</option>
-                        <option className="bg-surface text-primary" value="Study">Study</option>
-                        <option className="bg-surface text-primary" value="Code">Code</option>
-                        <option className="bg-surface text-primary" value="Rest">Rest</option>
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-primary">
-                        <span className="material-symbols-outlined text-[16px]">expand_more</span>
-                      </div>
-                    </div>
-                    <button onClick={() => handlePresetClick(25)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">25m</button>
-                    <button onClick={() => handlePresetClick(60)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">1h</button>
-                    <button onClick={() => handlePresetClick(180)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">3h</button>
-                  </>
-                )}
-                {mode === 'break' && (
-                  <>
-                    <button onClick={() => handlePresetClick(10)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">10m</button>
-                    <button onClick={() => handlePresetClick(15)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">15m</button>
-                    <button onClick={() => handlePresetClick(30)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">30m</button>
-                  </>
-                )}
-                <button onClick={() => setShowCustomInput(!showCustomInput)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">Custom</button>
-              </div>
-            )}
-
-            {showCustomInput && (mode === 'pomodoro' || mode === 'break') && (
-              <form onSubmit={handleCustomSubmit} className="flex gap-2 mb-6">
-                <input 
-                  type="number" 
-                  min="1"
-                  value={customMinutes}
-                  onChange={(e) => setCustomMinutes(e.target.value)}
-                  placeholder="Minutes" 
-                  className="bg-black/30 border border-white/20 rounded-md px-3 py-1 text-primary w-24 text-center focus:outline-none"
-                />
-                <button type="submit" className="px-3 py-1 bg-white/20 text-primary rounded-md hover:bg-white/30">Set</button>
-              </form>
-            )}
-
-            <div className="flex items-center gap-stack-md">
-              <button onClick={isRunning ? pause : start} className="p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors w-12 h-12 flex items-center justify-center">
-                <span className="material-symbols-outlined text-primary">{isRunning ? 'pause' : 'play_arrow'}</span>
-              </button>
-              {mode === 'stopwatch' && (
-                <button onClick={lap} className="px-6 py-2 rounded-full border border-white/30 text-primary hover:bg-white/10 transition-colors">Lap</button>
-              )}
-              {(mode === 'pomodoro' || mode === 'break') && (
-                <button onClick={reset} className="px-6 py-2 rounded-full border border-white/30 text-primary hover:bg-white/10 transition-colors">Reset</button>
-              )}
+        <Routes>
+          <Route path="/" element={
+            <div className="mt-stack-md flex flex-col items-center gap-3 animate-fade-in">
+              <p className="font-h2 text-h2 text-primary font-medium tracking-wide">
+                {getGreeting()}{user?.firstName ? `, ${user.firstName}` : ''}
+              </p>
+              <p className="font-body-lg text-body-lg text-primary/60 font-light tracking-wide italic max-w-md transition-opacity duration-700" style={{opacity: quoteVisible ? 1 : 0}}>
+                "{currentQuote}"
+              </p>
             </div>
-            
-            <p className="mt-stack-sm font-label-caps text-label-caps text-primary/60">
-              Total Daily Focus Time: {formatTime(dailyTotal)}
-            </p>
-          </div>
-        )}
+          } />
+          <Route path="/stopwatch" element={timerWidgetUi} />
+          <Route path="/timer" element={timerWidgetUi} />
+          <Route path="/break" element={timerWidgetUi} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </main>
 
       {/* Left panel widgets */}
@@ -418,21 +442,21 @@ function App() {
               </SignInButton>
             )}
 
-            <button onClick={() => { setSidebarOpen(true); setRightPanelOpen(false); }} className="text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex items-center justify-center" title="Themes">
-              <span className="material-symbols-outlined text-[20px]">palette</span>
-            </button>
-
-            <button onClick={() => setMode('home')} className={`${mode === 'home' ? 'bg-white/20 text-primary' : 'text-on-surface-variant hover:bg-white/10'} transition-all p-2 rounded-full flex items-center justify-center`} title="Home">
+            <NavLink to="/" className={({isActive}) => `${isActive ? 'bg-white/20 text-primary' : 'text-on-surface-variant hover:bg-white/10'} transition-all p-2 rounded-full flex items-center justify-center`} title="Home">
               <span className="material-symbols-outlined text-[20px]" style={{fontVariationSettings: mode === 'home' ? "'FILL' 1" : "'FILL' 0"}}>home</span>
-            </button>
+            </NavLink>
             
-            <button onClick={() => setMode('pomodoro')} className={`${mode === 'pomodoro' ? 'bg-white/20 text-primary' : 'text-on-surface-variant hover:bg-white/10'} transition-all p-2 rounded-full flex items-center justify-center`} title="Focus">
-              <span className="material-symbols-outlined text-[20px]" style={{fontVariationSettings: mode === 'pomodoro' ? "'FILL' 1" : "'FILL' 0"}}>filter_center_focus</span>
-            </button>
+            <NavLink to="/stopwatch" className={({isActive}) => `${isActive ? 'bg-white/20 text-primary' : 'text-on-surface-variant hover:bg-white/10'} transition-all p-2 rounded-full flex items-center justify-center`} title="Stopwatch">
+              <span className="material-symbols-outlined text-[20px]" style={{fontVariationSettings: mode === 'stopwatch' ? "'FILL' 1" : "'FILL' 0"}}>timer</span>
+            </NavLink>
 
-            <button onClick={() => setMode('break')} className={`${mode === 'break' ? 'bg-white/20 text-primary' : 'text-on-surface-variant hover:bg-white/10'} transition-all p-2 rounded-full flex items-center justify-center`} title="Break">
+            <NavLink to="/timer" className={({isActive}) => `${isActive ? 'bg-white/20 text-primary' : 'text-on-surface-variant hover:bg-white/10'} transition-all p-2 rounded-full flex items-center justify-center`} title="Timer">
+              <span className="material-symbols-outlined text-[20px]" style={{fontVariationSettings: mode === 'pomodoro' ? "'FILL' 1" : "'FILL' 0"}}>hourglass_empty</span>
+            </NavLink>
+
+            <NavLink to="/break" className={({isActive}) => `${isActive ? 'bg-white/20 text-primary' : 'text-on-surface-variant hover:bg-white/10'} transition-all p-2 rounded-full flex items-center justify-center`} title="Break">
               <span className="material-symbols-outlined text-[20px]" style={{fontVariationSettings: mode === 'break' ? "'FILL' 1" : "'FILL' 0"}}>coffee</span>
-            </button>
+            </NavLink>
 
             <button onClick={() => { setShowStats(!showStats); setRightPanelOpen(false); }} className={`${showStats ? 'bg-white/20 text-primary' : 'text-on-surface-variant hover:bg-white/10'} transition-all p-2 rounded-full flex items-center justify-center`} title="Stats">
               <span className="material-symbols-outlined text-[20px]">leaderboard</span>

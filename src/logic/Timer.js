@@ -85,40 +85,69 @@ export class FocusTimer {
         // Periodically check for date rollover (4 AM IST)
         setInterval(() => this.checkDate(), 1000);
         
+        // Setup cross-tab sync
+        this.channel = new BroadcastChannel('focus10010_sync');
+        this.channel.onmessage = (event) => {
+            const { type, payload } = event.data;
+            if (type === 'REQUEST_STATE') {
+                if (this.isRunning) {
+                    this.broadcastAction('SYNC_STATE');
+                }
+            } else {
+                this.applyBroadcastAction(type, payload);
+            }
+        };
+        // Request state from other tabs on boot
+        this.channel.postMessage({ type: 'REQUEST_STATE' });
+
         // Ensure UI is updated immediately on load
         setTimeout(() => this.onTick(this.getState()), 0);
     }
 
-    checkDate() {
-        const today = getLogicalDateStr();
-        if (this.currentDate !== today) {
-            this.dailyTotal = 0;
-            this.currentDate = today;
-            this.reset(); // This resets timeElapsed, laps, timeRemaining based on mode, pauses the timer, saves state, and calls onTick
-        }
+    broadcastAction(type) {
+        if (!this.channel) return;
+        this.channel.postMessage({
+            type,
+            payload: {
+                mode: this.mode,
+                timeRemaining: this.timeRemaining,
+                timeElapsed: this.timeElapsed,
+                dailyTotal: this.dailyTotal,
+                laps: this.laps,
+                tags: this.tags,
+                currentTag: this.currentTag,
+                isRunning: this.isRunning,
+                currentDate: this.currentDate,
+                lastTickTime: this.lastTickTime
+            }
+        });
     }
 
-    saveState() {
-        localStorage.setItem('focusTimerState', JSON.stringify({
-            mode: this.mode,
-            timeRemaining: this.timeRemaining,
-            timeElapsed: this.timeElapsed,
-            dailyTotal: this.dailyTotal,
-            laps: this.laps,
-            tags: this.tags,
-            currentTag: this.currentTag,
-            isRunning: this.isRunning,
-            currentDate: this.currentDate,
-            lastTickTime: this.lastTickTime || Date.now()
-        }));
-    }
-
-    start() {
-        if (this.isRunning) return;
-        this.isRunning = true;
-        this.lastTickTime = Date.now();
-        this.saveState();
+    applyBroadcastAction(type, payload) {
+        this.mode = payload.mode;
+        this.timeRemaining = payload.timeRemaining;
+        this.timeElapsed = payload.timeElapsed;
+        this.dailyTotal = payload.dailyTotal;
+        this.laps = payload.laps;
+        this.tags = payload.tags;
+        this.currentTag = payload.currentTag;
+        this.currentDate = payload.currentDate;
+        this.lastTickTime = payload.lastTickTime;
         
+        if (payload.isRunning) {
+            this.isRunning = true;
+            this._startInterval();
+        } else {
+            this.isRunning = false;
+            this._stopInterval();
+        }
+
+        this.saveState();
+        this.onTick(this.getState());
+    }
+
+    _startInterval() {
+        if (this.interval) return;
         this.interval = setInterval(() => {
             this.checkDate(); // Ensure stats reset if midnight passes while running
 
@@ -150,7 +179,6 @@ export class FocusTimer {
                         this.pause();
                         this.onComplete();
                     }
-                    // Break mode does NOT add to dailyTotal
                     this.onTick(this.getState());
                 }
             }
@@ -162,27 +190,69 @@ export class FocusTimer {
         }, 30); // roughly 30 FPS for smooth centiseconds
     }
 
-    pause() {
-        this.isRunning = false;
+    _stopInterval() {
         if (this.interval) {
             clearInterval(this.interval);
             this.interval = null;
         }
-        this.saveState();
-        this.onTick(this.getState());
     }
 
-    lap() {
+    checkDate() {
+        const today = getLogicalDateStr();
+        if (this.currentDate !== today) {
+            this.dailyTotal = 0;
+            this.currentDate = today;
+            this.reset(); // This resets timeElapsed, laps, timeRemaining based on mode, pauses the timer, saves state, and calls onTick
+        }
+    }
+
+    saveState() {
+        localStorage.setItem('focusTimerState', JSON.stringify({
+            mode: this.mode,
+            timeRemaining: this.timeRemaining,
+            timeElapsed: this.timeElapsed,
+            dailyTotal: this.dailyTotal,
+            laps: this.laps,
+            tags: this.tags,
+            currentTag: this.currentTag,
+            isRunning: this.isRunning,
+            currentDate: this.currentDate,
+            lastTickTime: this.lastTickTime || Date.now()
+        }));
+    }
+
+    start(broadcast = true) {
+        if (this.isRunning) return;
+        this.isRunning = true;
+        this.lastTickTime = Date.now();
+        this.saveState();
+        this._startInterval();
+        
+        if (broadcast) this.broadcastAction('START');
+    }
+
+    pause(broadcast = true) {
+        this.isRunning = false;
+        this._stopInterval();
+        this.saveState();
+        this.onTick(this.getState());
+        
+        if (broadcast) this.broadcastAction('PAUSE');
+    }
+
+    lap(broadcast = true) {
         if (this.mode === 'stopwatch') {
             this.laps.push(this.timeElapsed);
             this.timeElapsed = 0; // Resets session, total keeps going
             this.saveState();
             this.onTick(this.getState());
+            
+            if (broadcast) this.broadcastAction('LAP');
         }
     }
 
-    reset() {
-        this.pause();
+    reset(broadcast = true) {
+        this.pause(false);
         if (this.mode === 'pomodoro') {
             this.timeRemaining = 25 * 60 * 1000; 
         } else if (this.mode === 'break') {
@@ -193,10 +263,12 @@ export class FocusTimer {
         }
         this.saveState();
         this.onTick(this.getState());
+        
+        if (broadcast) this.broadcastAction('RESET');
     }
 
-    setMode(newMode) {
-        this.pause();
+    setMode(newMode, broadcast = true) {
+        this.pause(false);
         this.mode = newMode;
         if (this.mode === 'pomodoro') {
             this.timeRemaining = 25 * 60 * 1000;
@@ -205,19 +277,25 @@ export class FocusTimer {
         }
         this.saveState();
         this.onTick(this.getState());
+        
+        if (broadcast) this.broadcastAction('SET_MODE');
     }
 
-    setTag(newTag) {
+    setTag(newTag, broadcast = true) {
         this.currentTag = newTag;
         this.saveState();
         this.onTick(this.getState());
+        
+        if (broadcast) this.broadcastAction('SET_TAG');
     }
 
-    setDuration(seconds) {
-        this.pause();
+    setDuration(seconds, broadcast = true) {
+        this.pause(false);
         this.timeRemaining = seconds * 1000;
         this.saveState();
         this.onTick(this.getState());
+        
+        if (broadcast) this.broadcastAction('SET_DURATION');
     }
 
     static playChime() {
