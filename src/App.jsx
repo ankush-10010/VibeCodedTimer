@@ -8,6 +8,7 @@ import StatsWidget from './components/StatsWidget';
 import AmbientSoundWidget from './components/AmbientSoundWidget';
 import DailyGoalRing from './components/DailyGoalRing';
 import StreakBadge from './components/StreakBadge';
+import BackgroundLayer from './components/BackgroundLayer';
 import './index.css';
 
 // Clerk & Convex
@@ -16,7 +17,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '../convex/_generated/api';
 
 function App() {
-  const { mode, isRunning, timeRemaining, timeElapsed, dailyTotal, laps, start, pause, reset, lap, setMode, setDuration, formatTime, syncFromDb, showShortcuts, setShowShortcuts } = useTimer();
+  const { mode, isRunning, timeRemaining, timeElapsed, dailyTotal, laps, start, pause, reset, lap, setMode, setDuration, formatTime, syncFromDb, showShortcuts, setShowShortcuts, autoChain, setAutoChain, focusMode, setFocusMode } = useTimer();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -28,6 +29,32 @@ function App() {
   
   const [activeWidget, setActiveWidget] = useState(null); // 'tasks' | 'music' | 'notes' | 'ambient' | null
   const [showStats, setShowStats] = useState(false);
+
+  const [theme, setTheme] = useState(() => localStorage.getItem('flocus-theme') || 'default');
+  const [customColor, setCustomColor] = useState(() => localStorage.getItem('flocus-custom-color') || '#FFEE00');
+  const [backgroundType, setBackgroundType] = useState(() => localStorage.getItem('flocus-background') || 'breathe');
+
+  useEffect(() => {
+    document.documentElement.classList.remove('theme-ocean', 'theme-ember');
+    document.documentElement.style.removeProperty('--color-primary');
+
+    if (theme === 'ocean') document.documentElement.classList.add('theme-ocean');
+    else if (theme === 'ember') document.documentElement.classList.add('theme-ember');
+    else if (theme === 'custom') {
+      const hex = customColor.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      document.documentElement.style.setProperty('--color-primary', `${r}, ${g}, ${b}`);
+    }
+
+    localStorage.setItem('flocus-theme', theme);
+    localStorage.setItem('flocus-custom-color', customColor);
+  }, [theme, customColor]);
+
+  useEffect(() => {
+    localStorage.setItem('flocus-background', backgroundType);
+  }, [backgroundType]);
 
   // Quotes system
   const QUOTES = [
@@ -148,6 +175,13 @@ function App() {
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('code') || params.has('error')) {
+      setActiveWidget('music');
+    }
+  }, []);
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(err => {
@@ -194,9 +228,16 @@ function App() {
 
   return (
     <>
+      <BackgroundLayer backgroundType={backgroundType} />
+      {/* Focus Mode Dimmer */}
+      <div 
+        className={`fixed inset-0 pointer-events-none transition-all duration-1000 z-0 ${focusMode && isRunning ? 'opacity-100 bg-black/60' : 'opacity-0 bg-transparent'}`} 
+        style={{ boxShadow: focusMode && isRunning ? 'inset 0 0 200px rgba(0,0,0,0.8)' : 'none' }}
+      />
+
       {/* Top Left - Lap Report */}
       {!isFullscreen && (
-        <div className="absolute top-4 left-4 md:top-6 md:left-6 z-50 flex flex-col gap-2 pointer-events-none [&>*]:pointer-events-auto max-w-[80vw] md:max-w-none">
+        <div className={`absolute top-4 left-4 md:top-6 md:left-6 z-50 flex flex-col gap-2 max-w-[80vw] md:max-w-none transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
           {mode === 'stopwatch' && (
             <div className="glass-panel p-3 md:p-4 rounded-xl min-w-[150px] md:min-w-[200px] max-h-[250px] overflow-y-auto no-scrollbar border border-white/10 shadow-lg animate-fade-in">
               <h3 className="text-primary font-label-caps text-label-caps mb-2 opacity-80">Lap Report</h3>
@@ -219,7 +260,7 @@ function App() {
 
       {/* Top Right - Daily Goal + Streak */}
       {!isFullscreen && (
-        <div className="absolute top-4 right-4 md:top-6 md:right-6 z-50 flex items-start gap-3 pointer-events-none [&>*]:pointer-events-auto">
+        <div className={`absolute top-4 right-4 md:top-6 md:right-6 z-50 flex items-start gap-3 transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
           <DailyGoalRing dailyTotal={dailyTotal} formatTime={formatTime} />
           <StreakBadge user={user} />
         </div>
@@ -298,7 +339,7 @@ function App() {
       </main>
 
       {/* Left panel widgets */}
-      <div className="absolute bottom-4 left-4 md:bottom-6 md:left-6 z-50 pointer-events-none [&>*]:pointer-events-auto flex flex-col gap-4">
+      <div className={`absolute bottom-4 left-4 md:bottom-6 md:left-6 z-50 flex flex-col gap-4 transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
         
         {/* Active Widget Render */}
         <div className="relative">
@@ -325,7 +366,7 @@ function App() {
       </div>
 
       {/* Right panel options */}
-      <div className="absolute bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col items-end gap-2 pointer-events-none [&>*]:pointer-events-auto">
+      <div className={`absolute bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col items-end gap-2 transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
         
         <div className="relative w-full">
           {showStats && <StatsWidget user={user} onClose={() => setShowStats(false)} />}
@@ -346,7 +387,7 @@ function App() {
               </SignInButton>
             )}
 
-            <button className="text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex items-center justify-center" title="Themes">
+            <button onClick={() => { setSidebarOpen(true); setRightPanelOpen(false); }} className="text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex items-center justify-center" title="Themes">
               <span className="material-symbols-outlined text-[20px]">palette</span>
             </button>
 
@@ -427,6 +468,81 @@ function App() {
                     <span aria-hidden="true" className="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-on-secondary shadow ring-0 transition duration-200 ease-in-out translate-x-5"></span>
                   </button>
                 </div>
+                
+                <div className="flex items-center justify-between group cursor-pointer" onClick={() => setAutoChain(!autoChain)}>
+                  <div className="flex items-center gap-4">
+                    <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">autorenew</span>
+                    <span className="font-body-lg text-body-lg text-primary">Auto-chain timers</span>
+                  </div>
+                  <button aria-checked={autoChain} className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${autoChain ? 'bg-secondary' : 'bg-surface-container-highest'}`} role="switch" type="button">
+                    <span aria-hidden="true" className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${autoChain ? 'translate-x-5 bg-on-secondary' : 'translate-x-0 bg-on-surface-variant'}`}></span>
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between group cursor-pointer" onClick={() => setFocusMode(!focusMode)}>
+                  <div className="flex items-center gap-4">
+                    <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">visibility_off</span>
+                    <span className="font-body-lg text-body-lg text-primary">Focus mode overlay</span>
+                  </div>
+                  <button aria-checked={focusMode} className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${focusMode ? 'bg-secondary' : 'bg-surface-container-highest'}`} role="switch" type="button">
+                    <span aria-hidden="true" className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${focusMode ? 'translate-x-5 bg-on-secondary' : 'translate-x-0 bg-on-surface-variant'}`}></span>
+                  </button>
+                </div>
+              </div>
+            </section>
+            <section>
+              <label className="block font-label-caps text-label-caps text-on-surface-variant mb-stack-sm ml-1">Appearance</label>
+              <div className="bg-surface-container-high/30 rounded-2xl p-glass-padding border border-white/5 flex flex-col gap-6">
+                
+                <div className="flex flex-col gap-2">
+                  <span className="font-body-lg text-body-lg text-primary">Theme / Accent Color</span>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <select 
+                        value={theme} 
+                        onChange={(e) => setTheme(e.target.value)} 
+                        className="w-full appearance-none bg-surface-container-highest/50 border border-white/10 rounded-xl py-3 px-4 font-body-md text-body-md text-primary focus:outline-none focus:border-white/30 backdrop-blur-md cursor-pointer transition-colors"
+                      >
+                        <option className="bg-surface-container-highest text-primary" value="default">Default Dark</option>
+                        <option className="bg-surface-container-highest text-primary" value="ocean">Deep Ocean</option>
+                        <option className="bg-surface-container-highest text-primary" value="ember">Warm Ember</option>
+                        <option className="bg-surface-container-highest text-primary" value="custom">Custom Color...</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[20px]">expand_more</span>
+                      </div>
+                    </div>
+                    {theme === 'custom' && (
+                      <input 
+                        type="color" 
+                        value={customColor} 
+                        onChange={(e) => setCustomColor(e.target.value)}
+                        className="h-12 w-12 p-1 rounded-xl bg-surface-container-highest/50 border border-white/10 cursor-pointer"
+                        title="Choose custom color"
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <span className="font-body-lg text-body-lg text-primary">Background Scene</span>
+                  <div className="relative">
+                    <select 
+                      value={backgroundType} 
+                      onChange={(e) => setBackgroundType(e.target.value)} 
+                      className="w-full appearance-none bg-surface-container-highest/50 border border-white/10 rounded-xl py-3 px-4 font-body-md text-body-md text-primary focus:outline-none focus:border-white/30 backdrop-blur-md cursor-pointer transition-colors"
+                    >
+                      <option className="bg-surface-container-highest text-primary" value="none">None</option>
+                      <option className="bg-surface-container-highest text-primary" value="aurora">Aurora Flow</option>
+                      <option className="bg-surface-container-highest text-primary" value="matrix">Digital Grid</option>
+                      <option className="bg-surface-container-highest text-primary" value="breathe">Pulsing Breathe</option>
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-on-surface-variant">
+                      <span className="material-symbols-outlined text-[20px]">expand_more</span>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </section>
         </div>

@@ -9,7 +9,7 @@ export default {
     extend: {
       "colors": {
               "on-error": "#690005",
-              "surface": "#131313",
+              "surface": "rgba(var(--color-surface), <alpha-value>)",
               "secondary-fixed": "#e5e2e1",
               "primary-fixed": "#f7e600",
               "on-tertiary": "#003737",
@@ -18,10 +18,10 @@ export default {
               "surface-dim": "#131313",
               "inverse-surface": "#e2e2e2",
               "on-primary-fixed-variant": "#4e4800",
-              "background": "#000000",
+              "background": "rgba(var(--color-background), <alpha-value>)",
               "surface-container-lowest": "#0e0e0e",
-              "on-surface-variant": "#ccc7aa",
-              "primary": "#FFEE00",
+              "on-surface-variant": "rgba(var(--color-on-surface-variant), <alpha-value>)",
+              "primary": "rgba(var(--color-primary), <alpha-value>)",
               "tertiary-fixed-dim": "#49dada",
               "surface-container-low": "#1b1b1b",
               "on-secondary": "#313030",
@@ -40,7 +40,7 @@ export default {
               "primary-fixed-dim": "#d8ca00",
               "on-tertiary-fixed": "#002020",
               "surface-tint": "#d8ca00",
-              "surface-container-highest": "#353535",
+              "surface-container-highest": "rgba(var(--color-surface-container-highest), <alpha-value>)",
               "inverse-on-surface": "#303030",
               "on-tertiary-fixed-variant": "#004f50",
               "secondary": "#c8c6c5",
@@ -53,7 +53,7 @@ export default {
               "secondary-fixed-dim": "#c8c6c5",
               "surface-container": "#1f1f1f",
               "on-primary": "#000000",
-              "surface-container-high": "#2a2a2a",
+              "surface-container-high": "rgba(var(--color-surface-container-high), <alpha-value>)",
               "surface-variant": "#353535"
       },
       "borderRadius": {

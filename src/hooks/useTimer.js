@@ -26,6 +26,27 @@ export function useTimer() {
 
     const [timerState, setTimerState] = useState(getInitialState);
     const [showShortcuts, setShowShortcuts] = useState(false);
+
+    const [autoChain, setAutoChain] = useState(() => {
+        const saved = localStorage.getItem('focusAutoChain');
+        return saved ? JSON.parse(saved) : false;
+    });
+    useEffect(() => {
+        localStorage.setItem('focusAutoChain', JSON.stringify(autoChain));
+    }, [autoChain]);
+    const autoChainRef = useRef(autoChain);
+    useEffect(() => {
+        autoChainRef.current = autoChain;
+    }, [autoChain]);
+
+    const [focusMode, setFocusMode] = useState(() => {
+        const saved = localStorage.getItem('focusModeSetting');
+        return saved ? JSON.parse(saved) : false;
+    });
+    useEffect(() => {
+        localStorage.setItem('focusModeSetting', JSON.stringify(focusMode));
+    }, [focusMode]);
+
     const timerRef = useRef(null);
 
     useEffect(() => {
@@ -45,6 +66,16 @@ export function useTimer() {
                         ? "Break's over! Ready to focus? 💪" 
                         : 'Focus session complete! Time for a break 🎉';
                     new Notification(title, { body, icon: '/favicon.png' });
+                }
+
+                if (autoChainRef.current) {
+                    if (currentMode === 'pomodoro') {
+                        timerRef.current?.setMode('break');
+                        timerRef.current?.start();
+                    } else if (currentMode === 'break') {
+                        timerRef.current?.setMode('pomodoro');
+                        timerRef.current?.start();
+                    }
                 }
             }
         );
@@ -172,6 +203,10 @@ export function useTimer() {
         formatTime,
         syncFromDb,
         showShortcuts,
-        setShowShortcuts
+        setShowShortcuts,
+        autoChain,
+        setAutoChain,
+        focusMode,
+        setFocusMode
     };
 }

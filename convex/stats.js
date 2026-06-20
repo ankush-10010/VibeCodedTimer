@@ -45,7 +45,7 @@ export const getStats = query({
       .query("stats")
       .withIndex("by_user_date", (q) => q.eq("userId", identity.subject))
       .order("desc")
-      .take(7);
+      .take(90);
       
     return stats;
   },
