@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export default function StatsWidget({ onClose, user }) {
   const fetchedData = useQuery(api.stats.getStats, user ? undefined : "skip");
   
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState('heatmap'); // 'heatmap' or 'graph'
 
   useEffect(() => {
     if (!user) {
@@ -21,8 +23,14 @@ export default function StatsWidget({ onClose, user }) {
     if (!fetchedData) return null;
 
     const dataMap = {};
+    const tagSum = {};
     fetchedData.forEach(d => {
       dataMap[d.date] = d.totalMs;
+      if (d.tags) {
+        for (const [tag, duration] of Object.entries(d.tags)) {
+          tagSum[tag] = (tagSum[tag] || 0) + duration;
+        }
+      }
     });
 
     const dRef = new Date();
@@ -66,11 +74,31 @@ export default function StatsWidget({ onClose, user }) {
       });
     }
 
+    const barChartData = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(dRef);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const ms = dataMap[dateStr] || 0;
+      barChartData.push({
+        dateStr,
+        displayDate: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        hours: parseFloat((ms / 3600000).toFixed(2))
+      });
+    }
+
+    const pieChartData = Object.keys(tagSum).map(tag => ({
+      name: tag,
+      value: parseFloat((tagSum[tag] / 3600000).toFixed(2))
+    })).filter(d => d.value > 0);
+
     return {
       thisWeekHours,
       lastWeekHours,
       percentChange,
-      heatmapDays
+      heatmapDays,
+      barChartData,
+      pieChartData
     };
   }, [fetchedData]);
 
@@ -91,13 +119,43 @@ export default function StatsWidget({ onClose, user }) {
     return `${h}h ${m}m`;
   };
 
+  const PIE_COLORS = ['rgba(255, 238, 0, 0.8)', 'rgba(0, 255, 170, 0.8)', 'rgba(255, 100, 150, 0.8)', 'rgba(100, 150, 255, 0.8)', 'rgba(255, 150, 50, 0.8)'];
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="glass-panel p-2 rounded text-xs border border-white/10 shadow-xl">
+          <p className="text-on-surface-variant mb-1">{label}</p>
+          <p className="text-primary font-bold">{payload[0].value}h</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
-    <div className="absolute bottom-20 right-0 w-[420px] glass-panel rounded-2xl p-6 shadow-2xl animate-fade-in border border-white/20 z-50 flex flex-col mb-4 origin-bottom-right">
+    <div className="absolute bottom-20 right-0 w-[420px] max-h-[80vh] overflow-y-auto no-scrollbar glass-panel rounded-2xl p-6 shadow-2xl animate-fade-in border border-white/20 z-50 flex flex-col mb-4 origin-bottom-right">
       <div className="flex justify-between items-center mb-6">
         <h3 className="font-h2 text-lg text-primary">Focus Stats</h3>
-        <button onClick={onClose} className="text-on-surface-variant hover:text-primary transition-colors">
-          <span className="material-symbols-outlined">close</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex bg-surface-container-highest/50 rounded-full p-1 border border-white/5">
+            <button 
+              onClick={() => setViewMode('heatmap')} 
+              className={`px-3 py-1 text-xs rounded-full transition-colors ${viewMode === 'heatmap' ? 'bg-white/20 text-primary font-semibold' : 'text-on-surface-variant hover:text-primary'}`}
+            >
+              Heatmap
+            </button>
+            <button 
+              onClick={() => setViewMode('graph')} 
+              className={`px-3 py-1 text-xs rounded-full transition-colors ${viewMode === 'graph' ? 'bg-white/20 text-primary font-semibold' : 'text-on-surface-variant hover:text-primary'}`}
+            >
+              Graph
+            </button>
+          </div>
+          <button onClick={onClose} className="text-on-surface-variant hover:text-primary transition-colors">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
       </div>
       
       {!user ? (
@@ -125,24 +183,76 @@ export default function StatsWidget({ onClose, user }) {
             </div>
           </div>
 
-          {/* Focus Heatmap */}
-          <div>
-            <div className="text-on-surface-variant text-xs mb-3 uppercase tracking-wider font-semibold">Last 90 Days</div>
-            <div className="flex justify-center">
-              <div className="grid grid-rows-7 grid-flow-col gap-1.5 pb-2">
-                {stats.heatmapDays.map((day) => (
-                  <div 
-                    key={day.date} 
-                    className={`w-3 h-3 rounded-sm ${getIntensityClass(day.totalMs)} group relative cursor-pointer hover:ring-2 hover:ring-white/50 transition-all`}
-                  >
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-surface text-on-surface text-xs rounded border border-white/20 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
-                      {day.displayDate}: {formatTime(day.totalMs)}
+          {viewMode === 'heatmap' ? (
+            <div>
+              <div className="text-on-surface-variant text-xs mb-3 uppercase tracking-wider font-semibold">Last 90 Days</div>
+              <div className="flex justify-center">
+                <div className="grid grid-rows-7 grid-flow-col gap-1.5 pb-2">
+                  {stats.heatmapDays.map((day) => (
+                    <div 
+                      key={day.date} 
+                      className={`w-3 h-3 rounded-sm ${getIntensityClass(day.totalMs)} group relative cursor-pointer hover:ring-2 hover:ring-white/50 transition-all`}
+                    >
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-surface text-on-surface text-xs rounded border border-white/20 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+                        {day.displayDate}: {formatTime(day.totalMs)}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col gap-6">
+              <div>
+                <div className="text-on-surface-variant text-xs mb-3 uppercase tracking-wider font-semibold">Last 7 Days</div>
+                <div className="h-40 w-full mt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.barChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <XAxis dataKey="displayDate" stroke="rgba(255,255,255,0.3)" fontSize={11} tickMargin={8} axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
+                      <Bar dataKey="hours" fill="rgba(255, 238, 0, 0.7)" radius={[4, 4, 0, 0]} barSize={20} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+              
+              {stats.pieChartData.length > 0 && (
+                <div>
+                  <div className="text-on-surface-variant text-xs mb-3 uppercase tracking-wider font-semibold">Time by Tag</div>
+                  <div className="h-40 w-full flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={stats.pieChartData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={40}
+                          outerRadius={60}
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {stats.pieChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="flex flex-col gap-2 ml-4">
+                      {stats.pieChartData.map((entry, index) => (
+                        <div key={entry.name} className="flex items-center gap-2 text-xs">
+                          <span className="w-3 h-3 rounded-full" style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}></span>
+                          <span className="text-on-surface-variant w-12 truncate">{entry.name}</span>
+                          <span className="text-primary font-mono">{entry.value}h</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

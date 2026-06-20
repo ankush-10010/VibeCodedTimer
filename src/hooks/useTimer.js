@@ -9,7 +9,9 @@ export function useTimer() {
             timeRemaining: 25 * 60 * 1000,
             timeElapsed: 0,
             dailyTotal: 0,
-            laps: []
+            laps: [],
+            tags: {},
+            currentTag: 'Work'
         };
         const saved = localStorage.getItem('focusTimerState');
         if (saved) {
@@ -171,6 +173,7 @@ export function useTimer() {
     const reset = () => timerRef.current?.reset();
     const lap = () => timerRef.current?.lap();
     const setMode = (mode) => timerRef.current?.setMode(mode);
+    const setTag = (tag) => timerRef.current?.setTag(tag);
     const setDuration = (seconds) => timerRef.current?.setDuration(seconds);
 
     // Format MS into MM:SS.d (tenths) or H:MM:SS.d
@@ -190,7 +193,7 @@ export function useTimer() {
         return `${pad(m)}:${pad(s)}.${tenths}`;
     };
 
-    const syncFromDb = (dbDailyTotal, dbLaps) => timerRef.current?.syncFromDb(dbDailyTotal, dbLaps);
+    const syncFromDb = (dbDailyTotal, dbLaps, dbTags) => timerRef.current?.syncFromDb(dbDailyTotal, dbLaps, dbTags);
 
     return {
         ...timerState,
@@ -199,6 +202,7 @@ export function useTimer() {
         reset,
         lap,
         setMode,
+        setTag,
         setDuration,
         formatTime,
         syncFromDb,

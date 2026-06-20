@@ -2,7 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 export const syncDailyTotal = mutation({
-  args: { date: v.string(), totalMs: v.number(), laps: v.optional(v.array(v.number())) },
+  args: { date: v.string(), totalMs: v.number(), laps: v.optional(v.array(v.number())), tags: v.optional(v.record(v.string(), v.number())) },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
@@ -20,7 +20,8 @@ export const syncDailyTotal = mutation({
     if (existing) {
       await ctx.db.patch(existing._id, { 
         totalMs: args.totalMs,
-        laps: args.laps || existing.laps || []
+        laps: args.laps || existing.laps || [],
+        tags: args.tags || existing.tags || {}
       });
     } else {
       await ctx.db.insert("stats", {
@@ -28,6 +29,7 @@ export const syncDailyTotal = mutation({
         date: args.date,
         totalMs: args.totalMs,
         laps: args.laps || [],
+        tags: args.tags || {}
       });
     }
   },

@@ -18,6 +18,8 @@ export class FocusTimer {
         this.timeElapsed = 0; // in ms
         this.dailyTotal = 0; // in ms (Focus + Stopwatch)
         this.laps = []; // Array to store lap times
+        this.tags = {}; // Record to store duration per tag
+        this.currentTag = 'Work'; // Default tag
         this.isRunning = false;
 
         this.currentDate = getLogicalDateStr();
@@ -33,6 +35,8 @@ export class FocusTimer {
                     this.timeElapsed = parsed.timeElapsed || 0;
                     this.dailyTotal = parsed.dailyTotal || 0;
                     this.laps = parsed.laps || [];
+                    this.tags = parsed.tags || {};
+                    this.currentTag = parsed.currentTag || 'Work';
 
                     // If it was running when closed, catch up
                     if (parsed.isRunning && parsed.lastTickTime) {
@@ -44,7 +48,10 @@ export class FocusTimer {
                             this.dailyTotal += delta;
                         } else if (this.mode === 'pomodoro' || this.mode === 'break') {
                             this.timeRemaining -= delta;
-                            if (this.mode === 'pomodoro') this.dailyTotal += delta;
+                            if (this.mode === 'pomodoro') {
+                                this.dailyTotal += delta;
+                                this.tags[this.currentTag] = (this.tags[this.currentTag] || 0) + delta;
+                            }
                             if (this.timeRemaining <= 0) {
                                 this.timeRemaining = 0;
                             }
@@ -54,6 +61,7 @@ export class FocusTimer {
                     // It's a new day! Reset everything to 0 or defaults.
                     this.dailyTotal = 0;
                     this.laps = [];
+                    this.tags = {};
                     this.timeElapsed = 0;
                     if (this.mode === 'pomodoro') this.timeRemaining = 25 * 60 * 1000;
                     else if (this.mode === 'break') this.timeRemaining = 10 * 60 * 1000;
@@ -97,6 +105,8 @@ export class FocusTimer {
             timeElapsed: this.timeElapsed,
             dailyTotal: this.dailyTotal,
             laps: this.laps,
+            tags: this.tags,
+            currentTag: this.currentTag,
             isRunning: this.isRunning,
             currentDate: this.currentDate,
             lastTickTime: this.lastTickTime || Date.now()
@@ -124,6 +134,7 @@ export class FocusTimer {
                 if (this.timeRemaining > 0) {
                     this.timeRemaining -= delta;
                     this.dailyTotal += delta; // Pomodoro counts as focus time
+                    this.tags[this.currentTag] = (this.tags[this.currentTag] || 0) + delta;
                     if (this.timeRemaining <= 0) {
                         this.timeRemaining = 0;
                         this.pause();
@@ -196,6 +207,12 @@ export class FocusTimer {
         this.onTick(this.getState());
     }
 
+    setTag(newTag) {
+        this.currentTag = newTag;
+        this.saveState();
+        this.onTick(this.getState());
+    }
+
     setDuration(seconds) {
         this.pause();
         this.timeRemaining = seconds * 1000;
@@ -247,11 +264,13 @@ export class FocusTimer {
             timeRemaining: this.timeRemaining,
             timeElapsed: this.timeElapsed,
             dailyTotal: this.dailyTotal,
-            laps: this.laps
+            laps: this.laps,
+            tags: this.tags,
+            currentTag: this.currentTag
         };
     }
 
-    syncFromDb(dbDailyTotal, dbLaps) {
+    syncFromDb(dbDailyTotal, dbLaps, dbTags) {
         let updated = false;
         if (dbDailyTotal > this.dailyTotal) {
             this.dailyTotal = dbDailyTotal;
@@ -260,6 +279,17 @@ export class FocusTimer {
         if (dbLaps && dbLaps.length > this.laps.length) {
             this.laps = dbLaps;
             updated = true;
+        }
+        if (dbTags) {
+            // merge tags taking max of each
+            let tagsUpdated = false;
+            for (const [tag, duration] of Object.entries(dbTags)) {
+                if ((this.tags[tag] || 0) < duration) {
+                    this.tags[tag] = duration;
+                    tagsUpdated = true;
+                }
+            }
+            if (tagsUpdated) updated = true;
         }
         if (updated) {
             this.saveState();

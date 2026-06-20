@@ -17,7 +17,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '../convex/_generated/api';
 
 function App() {
-  const { mode, isRunning, timeRemaining, timeElapsed, dailyTotal, laps, start, pause, reset, lap, setMode, setDuration, formatTime, syncFromDb, showShortcuts, setShowShortcuts, autoChain, setAutoChain, focusMode, setFocusMode } = useTimer();
+  const { mode, isRunning, timeRemaining, timeElapsed, dailyTotal, laps, tags, currentTag, start, pause, reset, lap, setMode, setTag, setDuration, formatTime, syncFromDb, showShortcuts, setShowShortcuts, autoChain, setAutoChain, focusMode, setFocusMode } = useTimer();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -33,6 +33,20 @@ function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('flocus-theme') || 'default');
   const [customColor, setCustomColor] = useState(() => localStorage.getItem('flocus-custom-color') || '#FFEE00');
   const [backgroundType, setBackgroundType] = useState(() => localStorage.getItem('flocus-background') || 'breathe');
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.remove('theme-ocean', 'theme-ember');
@@ -113,28 +127,29 @@ function App() {
       const today = getLogicalDateStr();
       const todayStat = dbStats.find(s => s.date === today);
       if (todayStat) {
-        syncFromDb(todayStat.totalMs || 0, todayStat.laps || []);
+        syncFromDb(todayStat.totalMs || 0, todayStat.laps || [], todayStat.tags || {});
       }
     }
   }, [user, dbStats, syncFromDb]);
 
   // Track latest stats for periodic syncing
-  const latestStats = useRef({ dailyTotal, laps });
+  const latestStats = useRef({ dailyTotal, laps, tags });
   useEffect(() => {
-    latestStats.current = { dailyTotal, laps };
-  }, [dailyTotal, laps]);
+    latestStats.current = { dailyTotal, laps, tags };
+  }, [dailyTotal, laps, tags]);
 
   // Periodic sync to Convex every 10 seconds while running
   useEffect(() => {
     if (!user) return;
     const intervalId = setInterval(() => {
-      const { dailyTotal: currentTotal, laps: currentLaps } = latestStats.current;
+      const { dailyTotal: currentTotal, laps: currentLaps, tags: currentTags } = latestStats.current;
       if (isRunning && currentTotal > 0) {
         const today = getLogicalDateStr();
         syncStats({
           date: today,
           totalMs: currentTotal,
-          laps: currentLaps
+          laps: currentLaps,
+          tags: currentTags
         }).catch(err => console.error("Periodic sync failed:", err));
       }
     }, 10000);
@@ -150,7 +165,8 @@ function App() {
           await syncStats({
             date: today,
             totalMs: dailyTotal,
-            laps: laps // Send laps array to Convex
+            laps: laps, // Send laps array to Convex
+            tags: tags  // Send tags object to Convex
           });
         } catch (err) {
           console.error("Failed to sync stats to Convex:", err);
@@ -289,6 +305,21 @@ function App() {
               <div className="flex gap-2 mb-6 flex-wrap justify-center">
                 {mode === 'pomodoro' && (
                   <>
+                    <div className="relative group mr-2">
+                      <select 
+                        value={currentTag} 
+                        onChange={(e) => setTag(e.target.value)} 
+                        className="appearance-none bg-white/10 hover:bg-white/20 border border-white/20 rounded-full py-1 pl-4 pr-8 text-primary text-sm focus:outline-none focus:border-white/40 cursor-pointer transition-colors backdrop-blur-md"
+                      >
+                        <option className="bg-surface text-primary" value="Work">Work</option>
+                        <option className="bg-surface text-primary" value="Study">Study</option>
+                        <option className="bg-surface text-primary" value="Code">Code</option>
+                        <option className="bg-surface text-primary" value="Rest">Rest</option>
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-primary">
+                        <span className="material-symbols-outlined text-[16px]">expand_more</span>
+                      </div>
+                    </div>
                     <button onClick={() => handlePresetClick(25)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">25m</button>
                     <button onClick={() => handlePresetClick(60)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">1h</button>
                     <button onClick={() => handlePresetClick(180)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">3h</button>
@@ -488,6 +519,16 @@ function App() {
                     <span aria-hidden="true" className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${focusMode ? 'translate-x-5 bg-on-secondary' : 'translate-x-0 bg-on-surface-variant'}`}></span>
                   </button>
                 </div>
+
+                {deferredPrompt && (
+                  <div className="flex items-center justify-between group cursor-pointer" onClick={() => deferredPrompt.prompt()}>
+                    <div className="flex items-center gap-4">
+                      <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">install_mobile</span>
+                      <span className="font-body-lg text-body-lg text-primary">Install App</span>
+                    </div>
+                    <button className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-primary rounded-xl transition-colors text-sm font-medium border border-white/10">Install</button>
+                  </div>
+                )}
               </div>
             </section>
             <section>
