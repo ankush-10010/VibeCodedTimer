@@ -39,7 +39,7 @@ function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const modeRef = useRef(mode);
-  const pathRef = useRef(location.pathname);
+  const pathRef = useRef(null);
 
   // Sync Mode to URL (When timer auto-chains or mode changes internally)
   useEffect(() => {
