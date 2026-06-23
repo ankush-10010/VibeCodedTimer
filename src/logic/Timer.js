@@ -201,8 +201,11 @@ export class FocusTimer {
         const today = getLogicalDateStr();
         if (this.currentDate !== today) {
             this.dailyTotal = 0;
+            this.laps = [];
+            this.tags = {};
+            this.timeElapsed = 0;
             this.currentDate = today;
-            this.reset(); // This resets timeElapsed, laps, timeRemaining based on mode, pauses the timer, saves state, and calls onTick
+            this.reset(); // This resets timeRemaining based on mode, pauses the timer, saves state, and calls onTick
         }
     }
 
