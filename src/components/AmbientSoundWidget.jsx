@@ -281,7 +281,7 @@ function saveConfig(config) {
 export default function AmbientSoundWidget({ isOpen, onClose }) {
   // config shape: { [soundId]: { active: boolean, volume: number 0-1 } }
   const [config, setConfig] = useState(() => {
-    const saved = loadConfig();
+    const saved = loadConfig() || {};
     const initial = {};
     SOUNDS.forEach(s => {
       initial[s.id] = saved[s.id] || { active: false, volume: 0.5 };
@@ -289,9 +289,22 @@ export default function AmbientSoundWidget({ isOpen, onClose }) {
     return initial;
   });
 
-  // Refs for live audio nodes – keyed by sound id
   const nodesRef = useRef({});
-  const audioInitialized = useRef(false);
+
+  /* ── Resume AudioContext on first global interaction ─── */
+  useEffect(() => {
+    const resumeAudio = () => {
+      if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+        sharedAudioCtx.resume();
+      }
+    };
+    window.addEventListener('click', resumeAudio, { once: true });
+    window.addEventListener('keydown', resumeAudio, { once: true });
+    return () => {
+      window.removeEventListener('click', resumeAudio);
+      window.removeEventListener('keydown', resumeAudio);
+    };
+  }, []);
 
   /* ── Persist config ───────────────────────────────────────────── */
   useEffect(() => {
@@ -318,7 +331,6 @@ export default function AmbientSoundWidget({ isOpen, onClose }) {
 
   /* ── Sync active sounds with config (also handles re-mount) ─── */
   useEffect(() => {
-    if (!audioInitialized.current) return;
     SOUNDS.forEach(s => {
       if (config[s.id]?.active) {
         startSound(s.id);
@@ -338,31 +350,14 @@ export default function AmbientSoundWidget({ isOpen, onClose }) {
     };
   }, []);
 
-  /* ── Toggle handler (creates AudioContext on first interaction) ─ */
+  /* ── Toggle handler ─ */
   const handleToggle = useCallback((id) => {
-    if (!audioInitialized.current) {
-      getAudioContext(); // ensures context is created on user gesture
-      audioInitialized.current = true;
-
-      // Bootstrap any previously-active sounds from persisted config
-      setConfig(prev => {
-        const next = { ...prev, [id]: { ...prev[id], active: !prev[id].active } };
-        // Defer starting sounds to next tick so state is committed
-        setTimeout(() => {
-          SOUNDS.forEach(s => {
-            if (next[s.id]?.active) startSound(s.id);
-          });
-        }, 0);
-        return next;
-      });
-      return;
-    }
-
-    setConfig(prev => {
-      const next = { ...prev, [id]: { ...prev[id], active: !prev[id].active } };
-      return next;
-    });
-  }, [startSound]);
+    getAudioContext(); // ensures context is created/resumed
+    setConfig(prev => ({
+      ...prev,
+      [id]: { ...prev[id], active: !prev[id].active }
+    }));
+  }, []);
 
   /* ── Volume handler ───────────────────────────────────────────── */
   const handleVolume = useCallback((id, value) => {
