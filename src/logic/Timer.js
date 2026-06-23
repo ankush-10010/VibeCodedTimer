@@ -38,6 +38,14 @@ export class FocusTimer {
                     this.tags = parsed.tags || {};
                     this.currentTag = parsed.currentTag || 'Work';
 
+                    // Self-healing: if dailyTotal is 0, it's impossible to have legitimate laps or tags for today.
+                    // This clears poisoned data from the old date rollover bug.
+                    if (this.dailyTotal === 0) {
+                        this.laps = [];
+                        this.tags = {};
+                        this.timeElapsed = 0;
+                    }
+
                     // If it was running when closed, catch up
                     if (parsed.isRunning && parsed.lastTickTime) {
                         const now = Date.now();
