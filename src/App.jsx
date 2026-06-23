@@ -407,9 +407,9 @@ function App() {
         {/* Active Widget Render */}
         <div className="relative">
           {activeWidget === 'tasks' && <TodoWidget onClose={() => setActiveWidget(null)} />}
-          {activeWidget === 'music' && <SpotifyWidget onClose={() => setActiveWidget(null)} />}
           {activeWidget === 'notes' && <NotesWidget onClose={() => setActiveWidget(null)} />}
-          {activeWidget === 'ambient' && <AmbientSoundWidget onClose={() => setActiveWidget(null)} />}
+          <SpotifyWidget isOpen={activeWidget === 'music'} onClose={() => setActiveWidget(null)} />
+          <AmbientSoundWidget isOpen={activeWidget === 'ambient'} onClose={() => setActiveWidget(null)} />
         </div>
 
         <div className="glass-panel rounded-full px-3 md:px-4 py-2 flex gap-2 md:gap-4 shadow-2xl border border-white/20">

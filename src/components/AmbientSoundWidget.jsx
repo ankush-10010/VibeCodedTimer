@@ -278,7 +278,7 @@ function saveConfig(config) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
 }
 
-export default function AmbientSoundWidget({ onClose }) {
+export default function AmbientSoundWidget({ isOpen, onClose }) {
   // config shape: { [soundId]: { active: boolean, volume: number 0-1 } }
   const [config, setConfig] = useState(() => {
     const saved = loadConfig();
@@ -378,6 +378,8 @@ export default function AmbientSoundWidget({ onClose }) {
   }, []);
 
   /* ── Render ───────────────────────────────────────────────────── */
+  if (!isOpen) return null;
+
   return (
     <div className="absolute bottom-20 left-0 w-80 glass-panel rounded-2xl p-4 shadow-2xl animate-fade-in border border-white/20 z-50 flex flex-col mb-4">
       {/* Header */}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { SpotifyApi } from '@spotify/web-api-ts-sdk';
 
-export default function SpotifyWidget({ onClose }) {
+export default function SpotifyWidget({ isOpen, onClose }) {
   const [sdk, setSdk] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [player, setPlayer] = useState(null);
@@ -153,6 +153,8 @@ export default function SpotifyWidget({ onClose }) {
   };
 
   const track = playbackState?.track_window?.current_track;
+
+  if (!isOpen) return null;
 
   return (
     <div className="absolute bottom-20 left-0 w-80 glass-panel rounded-2xl p-4 shadow-2xl animate-fade-in border border-white/20 z-50 flex flex-col mb-4">
