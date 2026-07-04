@@ -78,7 +78,12 @@ export default {
               "display-clock-mobile": ["Outfit"],
               "body-lg": ["Inter"],
               "body-md": ["Inter"],
-              "h2": ["Outfit"]
+              "h2": ["Outfit"],
+              "s-label-sm": ["JetBrains Mono"],
+              "s-body-md": ["Geist"],
+              "s-headline-lg": ["Space Grotesk"],
+              "s-headline-lg-mobile": ["Space Grotesk"],
+              "s-display-lg": ["Space Grotesk"]
       },
       "fontSize": {
               "h1": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
@@ -88,7 +93,12 @@ export default {
               "display-clock-mobile": ["72px", { "lineHeight": "72px", "letterSpacing": "-0.04em", "fontWeight": "700" }],
               "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
               "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
-              "h2": ["24px", { "lineHeight": "32px", "fontWeight": "500" }]
+              "h2": ["24px", { "lineHeight": "32px", "fontWeight": "500" }],
+              "s-label-sm": ["12px", { "lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "500" }],
+              "s-body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+              "s-headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "600" }],
+              "s-headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "600" }],
+              "s-display-lg": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }]
       }
     },
   },

@@ -9,6 +9,7 @@ import AmbientSoundWidget from './components/AmbientSoundWidget';
 import DailyGoalRing from './components/DailyGoalRing';
 import StreakBadge from './components/StreakBadge';
 import BackgroundLayer from './components/BackgroundLayer';
+import StatsPage from './pages/StatsPage';
 import './index.css';
 
 // Clerk & Convex
@@ -371,7 +372,7 @@ function App() {
       )}
 
       {/* Top Right - Daily Goal + Streak */}
-      {!isFullscreen && (
+      {!isFullscreen && location.pathname !== '/stats' && (
         <div className={`absolute top-4 right-4 md:top-6 md:right-6 z-50 flex items-start gap-3 transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
           <DailyGoalRing dailyTotal={dailyTotal} formatTime={formatTime} />
           <StreakBadge user={user} />
@@ -397,36 +398,39 @@ function App() {
           <Route path="/stopwatch" element={timerWidgetUi} />
           <Route path="/timer" element={timerWidgetUi} />
           <Route path="/break" element={timerWidgetUi} />
+          <Route path="/stats" element={<StatsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
 
       {/* Left panel widgets */}
-      <div className={`absolute bottom-4 left-4 md:bottom-6 md:left-6 z-50 flex flex-col gap-4 transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
-        
-        {/* Active Widget Render */}
-        <div className="relative">
-          {activeWidget === 'tasks' && <TodoWidget onClose={() => setActiveWidget(null)} />}
-          {activeWidget === 'notes' && <NotesWidget onClose={() => setActiveWidget(null)} />}
-          <SpotifyWidget isOpen={activeWidget === 'music'} onClose={() => setActiveWidget(null)} />
-          <AmbientSoundWidget isOpen={activeWidget === 'ambient'} onClose={() => setActiveWidget(null)} />
-        </div>
+      {location.pathname !== '/stats' && (
+        <div className={`absolute bottom-4 left-4 md:bottom-6 md:left-6 z-50 flex flex-col gap-4 transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
+          
+          {/* Active Widget Render */}
+          <div className="relative">
+            {activeWidget === 'tasks' && <TodoWidget onClose={() => setActiveWidget(null)} />}
+            {activeWidget === 'notes' && <NotesWidget onClose={() => setActiveWidget(null)} />}
+            <SpotifyWidget isOpen={activeWidget === 'music'} onClose={() => setActiveWidget(null)} />
+            <AmbientSoundWidget isOpen={activeWidget === 'ambient'} onClose={() => setActiveWidget(null)} />
+          </div>
 
-        <div className="glass-panel rounded-full px-3 md:px-4 py-2 flex gap-2 md:gap-4 shadow-2xl border border-white/20">
-          <button onClick={() => setActiveWidget(activeWidget === 'tasks' ? null : 'tasks')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'tasks' ? 'bg-white/20 text-primary' : ''}`}>
-            <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">check_circle</span>
-          </button>
-          <button onClick={() => setActiveWidget(activeWidget === 'music' ? null : 'music')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'music' ? 'bg-white/20 text-primary' : ''}`}>
-            <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">music_note</span>
-          </button>
-          <button onClick={() => setActiveWidget(activeWidget === 'notes' ? null : 'notes')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'notes' ? 'bg-white/20 text-primary' : ''}`}>
-            <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">edit_note</span>
-          </button>
-          <button onClick={() => setActiveWidget(activeWidget === 'ambient' ? null : 'ambient')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'ambient' ? 'bg-white/20 text-primary' : ''}`}>
-            <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">spa</span>
-          </button>
+          <div className="glass-panel rounded-full px-3 md:px-4 py-2 flex gap-2 md:gap-4 shadow-2xl border border-white/20">
+            <button onClick={() => setActiveWidget(activeWidget === 'tasks' ? null : 'tasks')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'tasks' ? 'bg-white/20 text-primary' : ''}`}>
+              <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">check_circle</span>
+            </button>
+            <button onClick={() => setActiveWidget(activeWidget === 'music' ? null : 'music')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'music' ? 'bg-white/20 text-primary' : ''}`}>
+              <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">music_note</span>
+            </button>
+            <button onClick={() => setActiveWidget(activeWidget === 'notes' ? null : 'notes')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'notes' ? 'bg-white/20 text-primary' : ''}`}>
+              <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">edit_note</span>
+            </button>
+            <button onClick={() => setActiveWidget(activeWidget === 'ambient' ? null : 'ambient')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'ambient' ? 'bg-white/20 text-primary' : ''}`}>
+              <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">spa</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Right panel options */}
       <div className={`absolute bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex flex-col items-end gap-2 transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
@@ -466,7 +470,7 @@ function App() {
               <span className="material-symbols-outlined text-[20px]" style={{fontVariationSettings: mode === 'break' ? "'FILL' 1" : "'FILL' 0"}}>coffee</span>
             </NavLink>
 
-            <button onClick={() => { setShowStats(!showStats); setRightPanelOpen(false); }} className={`${showStats ? 'bg-white/20 text-primary' : 'text-on-surface-variant hover:bg-white/10'} transition-all p-2 rounded-full flex items-center justify-center`} title="Stats">
+            <button onClick={() => { navigate('/stats'); setRightPanelOpen(false); }} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex items-center justify-center`} title="Stats">
               <span className="material-symbols-outlined text-[20px]">leaderboard</span>
             </button>
 

@@ -134,7 +134,7 @@ export default function StatsWidget({ onClose, user }) {
   };
 
   return (
-    <div className="absolute bottom-20 right-0 w-[420px] max-h-[80vh] overflow-y-auto no-scrollbar glass-panel rounded-2xl p-6 shadow-2xl animate-fade-in border border-white/20 z-50 flex flex-col mb-4 origin-bottom-right">
+    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[420px] max-h-[80vh] overflow-y-auto no-scrollbar glass-panel rounded-2xl p-6 shadow-2xl animate-fade-in border border-white/20 z-[100] flex flex-col">
       <div className="flex justify-between items-center mb-6">
         <h3 className="font-h2 text-lg text-primary">Focus Stats</h3>
         <div className="flex items-center gap-3">
