@@ -155,7 +155,52 @@ export default function StatsPage() {
       name, percent: Math.round((ms / Math.max(1, totalAllTimeMs)) * 100)
     }));
 
-    return { thisWeekHours, lastWeekHours, dailyAverage, percentChange, totalAllTimeHours, bestDayStr, bestDayHours: (bestDayMs / 3600000).toFixed(1), heatmapDays, barChartData, maxChartMs, topTags };
+    let currentStreak = 0;
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(dRef);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const ms = dataMap[dateStr] || 0;
+      if (i === 0 && ms < 1800000) continue;
+      if (ms >= 1800000) currentStreak++;
+      else if (i > 0) break;
+    }
+
+    let longestStreak = 0;
+    let tempStreak = 0;
+    for (let i = 364; i >= 0; i--) {
+      const d = new Date(dRef);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const ms = dataMap[dateStr] || 0;
+      if (ms >= 1800000) {
+        tempStreak++;
+        if (tempStreak > longestStreak) longestStreak = tempStreak;
+      } else {
+        tempStreak = 0;
+      }
+    }
+    if (currentStreak > longestStreak) longestStreak = currentStreak;
+
+    let activeDaysLast30 = 0;
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(dRef);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      if ((dataMap[dateStr] || 0) > 0) activeDaysLast30++;
+    }
+    const consistency = Math.round((activeDaysLast30 / 30) * 100);
+
+    let actualThisWeekMs = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(dRef);
+      d.setDate(d.getDate() - i);
+      actualThisWeekMs += dataMap[d.toISOString().split('T')[0]] || 0;
+    }
+    const actualThisWeekHours = Number((actualThisWeekMs / 3600000).toFixed(1));
+    const weeklyProgressPercent = Math.min(100, Math.round((actualThisWeekHours / 72) * 100));
+
+    return { thisWeekHours, lastWeekHours, dailyAverage, percentChange, totalAllTimeHours, bestDayStr, bestDayHours: (bestDayMs / 3600000).toFixed(1), heatmapDays, barChartData, maxChartMs, topTags, currentStreak, longestStreak, consistency, actualThisWeekHours, weeklyProgressPercent };
   }, [fetchedData, comparePeriod, compareOffset]);
 
   const getHeatmapClass = (ms) => {
@@ -353,7 +398,7 @@ export default function StatsPage() {
                   <span className="material-symbols-outlined text-primary-fixed bg-primary-fixed/10 p-3 rounded-full text-2xl" data-icon="local_fire_department">local_fire_department</span>
                   <div>
                     <div className="font-s-label-sm text-sm text-on-surface-variant mb-1">Current Streak</div>
-                    <div className="font-s-headline-lg text-2xl text-primary tabular-nums">12 Days</div>
+                    <div className="font-s-headline-lg text-2xl text-primary tabular-nums">{stats.currentStreak} {stats.currentStreak === 1 ? 'Day' : 'Days'}</div>
                   </div>
                 </div>
               </div>
@@ -362,7 +407,7 @@ export default function StatsPage() {
                   <span className="material-symbols-outlined text-tertiary-fixed bg-tertiary-fixed/10 p-3 rounded-full text-2xl" data-icon="emoji_events">emoji_events</span>
                   <div>
                     <div className="font-s-label-sm text-sm text-on-surface-variant mb-1">Longest Streak</div>
-                    <div className="font-s-headline-lg text-2xl text-primary tabular-nums">45 Days</div>
+                    <div className="font-s-headline-lg text-2xl text-primary tabular-nums">{stats.longestStreak} {stats.longestStreak === 1 ? 'Day' : 'Days'}</div>
                   </div>
                 </div>
               </div>
@@ -370,10 +415,10 @@ export default function StatsPage() {
             <div className="relative w-[140px] h-[140px] flex-shrink-0 flex items-center justify-center">
               <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 140 140">
                 <circle cx="70" cy="70" fill="none" r="62" stroke="#333333" strokeWidth="10"></circle>
-                <circle className="box-glow" cx="70" cy="70" fill="none" r="62" stroke="#FFEE00" strokeDasharray="389.5" strokeDashoffset="58.4" strokeLinecap="round" strokeWidth="10"></circle>
+                <circle className="box-glow" cx="70" cy="70" fill="none" r="62" stroke="#FFEE00" strokeDasharray="389.5" strokeDashoffset={389.5 * (1 - (stats.consistency || 0) / 100)} strokeLinecap="round" strokeWidth="10" style={{ transition: 'stroke-dashoffset 1s ease-in-out' }}></circle>
               </svg>
               <div className="text-center z-10">
-                <div className="font-s-headline-lg text-2xl text-primary-fixed tabular-nums">85%</div>
+                <div className="font-s-headline-lg text-2xl text-primary-fixed tabular-nums">{stats.consistency}%</div>
                 <div className="font-s-label-sm text-xs text-on-surface-variant mt-1">Consistency</div>
               </div>
             </div>
@@ -449,10 +494,10 @@ export default function StatsPage() {
       <footer className="bg-background/95 backdrop-blur-lg border-t border-primary-fixed/30 shadow-[0_-4px_20px_rgba(216,202,0,0.15)] fixed bottom-0 w-full z-50 flex flex-col justify-center px-6 md:px-8 h-20">
         <div className="flex justify-between items-end mb-3 w-full">
           <span className="font-s-label-sm text-sm font-bold text-primary-fixed uppercase tracking-wider">Weekly Goal Progress</span>
-          <span className="font-s-label-sm text-sm text-on-surface-variant tabular-nums">14.2h / 20h</span>
+          <span className="font-s-label-sm text-sm text-on-surface-variant tabular-nums">{stats.actualThisWeekHours}h / 72h</span>
         </div>
         <div className="w-full h-2.5 bg-surface-container-highest rounded-full overflow-hidden border border-outline-variant/50 relative">
-          <div className="h-full bg-primary-fixed rounded-full box-glow w-[71%] relative">
+          <div className="h-full bg-primary-fixed rounded-full box-glow relative transition-all duration-500" style={{ width: `${stats.weeklyProgressPercent}%` }}>
             <div className="absolute inset-0 bg-white/20 w-full h-full" style={{ animation: 'pulse 2s infinite' }}></div>
           </div>
         </div>
