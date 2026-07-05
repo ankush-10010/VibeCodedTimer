@@ -349,7 +349,7 @@ function App() {
       />
 
       {/* Top Left - Lap Report */}
-      {!isFullscreen && (
+      {!isFullscreen && location.pathname !== '/stats' && (
         <div className={`absolute top-4 left-4 md:top-6 md:left-6 z-50 flex flex-col gap-2 max-w-[80vw] md:max-w-none transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
           {mode === 'stopwatch' && (
             <div className="glass-panel p-3 md:p-4 rounded-xl min-w-[150px] md:min-w-[200px] max-h-[250px] overflow-y-auto no-scrollbar border border-white/10 shadow-lg animate-fade-in">
