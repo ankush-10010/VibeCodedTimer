@@ -1,10 +1,11 @@
-// import React, { useState, useMemo } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useNavigate, Link } from 'react-router-dom';
 import './StatsPage.css';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { generateFocusReport } from '../logic/generateFocusReport';
+
 export default function StatsPage() {
   const navigate = useNavigate();
   const heatmapScrollRef = useRef(null); 
@@ -16,147 +17,7 @@ export default function StatsPage() {
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   const handleExport = (period) => {
-    if (!fetchedData) return;
-
-    const dataMap = {};
-    const tagSum = {};
-    fetchedData.forEach(d => {
-      dataMap[d.date] = d.totalMs;
-      if (d.tags) {
-        for (const [tag, duration] of Object.entries(d.tags)) {
-          tagSum[tag] = (tagSum[tag] || 0) + duration;
-        }
-      }
-    });
-
-    const dRef = new Date();
-    dRef.setTime(dRef.getTime() - 4 * 60 * 60 * 1000); 
-
-    let thisPeriodMs = 0;
-    let lastPeriodMs = 0;
-
-    let periodDays = 0;
-    if (period === 'weekly') periodDays = 7;
-    else if (period === 'monthly') periodDays = 28;
-    else periodDays = 365; // allTime
-
-    for (let i = 0; i < periodDays; i++) {
-      const d = new Date(dRef);
-      d.setDate(d.getDate() - i);
-      thisPeriodMs += dataMap[d.toISOString().split('T')[0]] || 0;
-    }
-    for (let i = periodDays; i < periodDays * 2; i++) {
-      const d = new Date(dRef);
-      d.setDate(d.getDate() - i);
-      lastPeriodMs += dataMap[d.toISOString().split('T')[0]] || 0;
-    }
-
-    const thisPeriodHours = Number((thisPeriodMs / 3600000).toFixed(1));
-    const lastPeriodHours = Number((lastPeriodMs / 3600000).toFixed(1));
-    
-    const divisor = period === 'weekly' ? 7 : period === 'monthly' ? 28 : Math.max(1, Object.keys(dataMap).length || 1);
-    const dailyAverageHours = Number((thisPeriodMs / 3600000 / divisor).toFixed(1));
-
-    let percentChange = 0;
-    if (lastPeriodMs > 0) {
-      percentChange = Math.round(((thisPeriodMs - lastPeriodMs) / lastPeriodMs) * 100);
-    } else if (thisPeriodMs > 0) {
-      percentChange = 100;
-    }
-
-    let bestDayMs = 0;
-    let bestDayStr = "None";
-    Object.entries(dataMap).forEach(([date, ms]) => {
-      if (ms > bestDayMs) {
-        bestDayMs = ms;
-        bestDayStr = date;
-      }
-    });
-    const bestDayHours = Number((bestDayMs / 3600000).toFixed(1));
-
-    let currentStreak = 0;
-    for (let i = 0; i < 365; i++) {
-      const d = new Date(dRef);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const ms = dataMap[dateStr] || 0;
-      if (i === 0 && ms < 1800000) continue;
-      if (ms >= 1800000) currentStreak++;
-      else if (i > 0) break;
-    }
-
-    const focusDistribution = [];
-    if (period === 'weekly') {
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(dRef);
-        d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        focusDistribution.push({
-          date: dateStr,
-          day: d.toLocaleDateString('en-US', { weekday: 'short' }),
-          hours: Number(((dataMap[dateStr] || 0) / 3600000).toFixed(1))
-        });
-      }
-    } else if (period === 'monthly') {
-      for (let i = 3; i >= 0; i--) {
-        let ms = 0;
-        for (let j = 0; j < 7; j++) {
-           const d = new Date(dRef); 
-           d.setDate(d.getDate() - (i * 7 + j));
-           ms += dataMap[d.toISOString().split('T')[0]] || 0;
-        }
-        focusDistribution.push({
-          week: `W${4 - i}`,
-          hours: Number((ms / 3600000).toFixed(1))
-        });
-      }
-    } else {
-      for (let i = 5; i >= 0; i--) {
-        const d1 = new Date(dRef.getFullYear(), dRef.getMonth() - i, 1);
-        let ms = 0;
-        const year = d1.getFullYear();
-        const month = d1.getMonth();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        for (let d = 1; d <= daysInMonth; d++) {
-          const dateStr = new Date(year, month, d).toISOString().split('T')[0];
-          ms += dataMap[dateStr] || 0;
-        }
-        focusDistribution.push({
-          month: d1.toLocaleDateString('en-US', { month: 'short' }),
-          hours: Number((ms / 3600000).toFixed(1))
-        });
-      }
-    }
-
-    const exportData = {
-      period,
-      generatedAt: new Date().toISOString(),
-      metrics: {
-        totalFocusHours: thisPeriodHours,
-        dailyAverageHours,
-        vsLastPeriod: {
-          lastPeriodHours,
-          percentChange,
-          trajectory: percentChange >= 0 ? "Positive" : "Negative"
-        },
-        peakPerformance: {
-          date: bestDayStr,
-          hours: bestDayHours
-        },
-        currentStreakDays: currentStreak,
-      },
-      focusDistribution
-    };
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `focus_stats_${period}_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    generateFocusReport(period, fetchedData, user?.fullName || user?.firstName || 'User');
     setIsExportMenuOpen(false);
   };
 
