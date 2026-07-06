@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 /**
  * generateFocusReport
@@ -251,7 +251,7 @@ export function generateFocusReport(period, fetchedData, userName) {
     ['30-Day Consistency', `${consistency}% (${activeDays30}/30 active days)`],
   ];
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     head: [['Metric', 'Value']],
     body: summaryRows,
@@ -299,7 +299,7 @@ export function generateFocusReport(period, fetchedData, userName) {
     return [r.date, r.dayName, `${r.hours}h`, `${r.minutes} min`, tagStr];
   });
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     head: [['Date', 'Day', 'Hours', 'Minutes', 'Tags Breakdown']],
     body: dailyTableBody,
@@ -352,7 +352,7 @@ export function generateFocusReport(period, fetchedData, userName) {
       `${w.days} days`,
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       head: [['Week', 'Date Range', 'Total Hours', 'Daily Avg', 'Days']],
       body: weekBody,
@@ -398,7 +398,7 @@ export function generateFocusReport(period, fetchedData, userName) {
       `${thisPeriodMs > 0 ? Math.round((ms / thisPeriodMs) * 100) : 0}%`,
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       head: [['Tag', 'Hours', 'Minutes', '% of Period']],
       body: tagBody,
@@ -441,7 +441,7 @@ export function generateFocusReport(period, fetchedData, userName) {
   doc.text('A "streak day" requires ≥ 30 minutes of logged focus. Consistency = active days in last 30 calendar days.', margin, y);
   y += 5;
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     head: [['Metric', 'Value', 'How It Is Calculated']],
     body: [
