@@ -448,24 +448,39 @@ export function generateFocusReport(period, fetchedData, userName) {
         .ledger-table tr:last-child td {
             border-bottom: none;
         }
+        
+        .a4-container {
+            width: 100%;
+            max-width: 794px;
+            margin: 0 auto;
+            background-color: #131313;
+            min-height: 1123px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
+
         @page { size: A4 portrait; margin: 0; }
         @media print {
             html, body { width: 100%; height: 100%; margin: 0; padding: 0; background-color: #131313; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .no-print { display: none !important; }
+            .a4-container { width: 100% !important; max-width: none !important; min-height: 100vh !important; box-shadow: none !important; margin: 0 !important; }
         }
     </style>
 </head>
-<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col antialiased">
+<body class="antialiased py-8 bg-[#0a0a0a]">
 
 <!-- Action Bar (No Print) -->
-<div class="no-print absolute top-4 right-4 z-50 flex gap-2">
-    <button onclick="window.print()" class="bg-neon text-black px-4 py-2 rounded font-bold text-sm hover:opacity-90 flex items-center gap-2">
+<div class="no-print fixed top-4 right-4 z-[999] flex gap-2">
+    <button onclick="window.print()" class="bg-neon text-black px-4 py-2 rounded font-bold text-sm hover:opacity-90 flex items-center gap-2 shadow-lg">
         <span class="material-symbols-outlined text-[18px]">print</span> Print / Save PDF
     </button>
 </div>
 
+<div class="a4-container relative bg-background text-on-background font-body-md">
+
 <!-- TopNavBar -->
-<header class="bg-background docked full-width top-0 border-b border-outline-variant flat no shadows z-50 sticky">
+<header class="bg-background w-full border-b border-outline-variant flat no shadows z-50">
 <div class="flex justify-between items-center w-full px-gutter py-4 max-w-container-max mx-auto">
 <div class="font-headline-md text-headline-md font-bold text-primary-fixed-dim tracking-tight">
                 FOCUS10010 AllTime Report
@@ -607,6 +622,7 @@ ${tagDistributionHtml}
         const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' };
         document.getElementById('timestamp').textContent = now.toLocaleDateString('en-US', options);
     </script>
+</div>
 </body></html>`;
 
   } else if (period === 'monthly') {
@@ -960,6 +976,16 @@ ${mTagHtml || '<span class="text-on-surface-variant">No tags used</span>'}
             grid-template-columns: repeat(12, 1fr);
             gap: 12px;
         }
+        .a4-container {
+            width: 100%;
+            max-width: 794px;
+            margin: 0 auto;
+            background-color: #0F0F0F;
+            min-height: 1123px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+        }
         @page {
             size: A4 portrait;
             margin: 0;
@@ -967,20 +993,21 @@ ${mTagHtml || '<span class="text-on-surface-variant">No tags used</span>'}
         @media print {
             html, body { margin: 0; padding: 0; width: 100%; height: 100%; background-color: #0F0F0F; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .no-print { display: none !important; }
-            .a4-container { width: 100% !important; min-height: 100vh !important; box-shadow: none !important; margin: 0 !important; }
+            .a4-container { width: 100% !important; max-width: none !important; min-height: 100vh !important; box-shadow: none !important; margin: 0 !important; }
         }
     </style>
 </head>
-<body class="antialiased min-h-screen flex flex-col justify-center items-center py-8 print:py-0 print:block">
-<div class="bg-theme-bg shadow-2xl relative overflow-hidden a4-container" style="width: 210mm; min-height: 297mm; max-width: 100%;">
+<body class="antialiased py-8 bg-[#0a0a0a]">
     
     <!-- Action Bar (No Print) -->
-    <div class="no-print absolute top-4 right-4 z-50 flex gap-2">
-        <button onclick="window.print()" class="bg-theme-neon-yellow text-black px-4 py-2 rounded font-bold text-sm hover:opacity-90 flex items-center gap-2">
+    <div class="no-print fixed top-4 right-4 z-[999] flex gap-2">
+        <button onclick="window.print()" class="bg-theme-neon-yellow text-black px-4 py-2 rounded font-bold text-sm hover:opacity-90 flex items-center gap-2 shadow-lg">
             <span class="material-symbols-outlined text-[18px]">print</span> Print / Save PDF
         </button>
     </div>
 
+<div class="bg-theme-bg shadow-2xl relative overflow-hidden a4-container">
+    
     <!-- TopNavBar -->
     <header class="bg-theme-bg border-b border-outline-variant flex justify-between items-center w-full px-page-margin py-6 mx-auto">
         <div class="flex flex-col">
@@ -1076,7 +1103,7 @@ ${mTagHtml || '<span class="text-on-surface-variant">No tags used</span>'}
     </main>
 
     <!-- Footer -->
-    <footer class="bg-theme-bg border-t border-outline-variant flex justify-between items-center w-full px-page-margin py-8 absolute bottom-0">
+    <footer class="bg-theme-bg border-t border-outline-variant flex justify-between items-center w-full px-page-margin py-8 mt-auto">
         <div class="flex flex-col gap-2">
             <span class="font-label-caps text-label-caps text-on-surface-variant tracking-widest">Focus10010 Analytics Methodology • Confidential Executive Report</span>
             <span class="font-body-md text-body-md text-on-surface-variant opacity-70">Day boundary offset by -4 hours. Streak requires >= 30 mins.</span>
