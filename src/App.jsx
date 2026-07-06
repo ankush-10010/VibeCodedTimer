@@ -41,6 +41,7 @@ function App() {
   const navigate = useNavigate();
   const modeRef = useRef(mode);
   const pathRef = useRef(null);
+  const isStatsPage = location.pathname.startsWith('/stats');
 
   // Sync Mode to URL (When timer auto-chains or mode changes internally)
   useEffect(() => {
@@ -349,7 +350,7 @@ function App() {
       />
 
       {/* Top Left - Lap Report */}
-      {!isFullscreen && location.pathname !== '/stats' && (
+      {!isFullscreen && !isStatsPage && (
         <div className={`absolute top-4 left-4 md:top-6 md:left-6 z-50 flex flex-col gap-2 max-w-[80vw] md:max-w-none transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
           {mode === 'stopwatch' && (
             <div className="glass-panel p-3 md:p-4 rounded-xl min-w-[150px] md:min-w-[200px] max-h-[250px] overflow-y-auto no-scrollbar border border-white/10 shadow-lg animate-fade-in">
@@ -372,7 +373,7 @@ function App() {
       )}
 
       {/* Top Right - Daily Goal + Streak */}
-      {!isFullscreen && location.pathname !== '/stats' && (
+      {!isFullscreen && !isStatsPage && (
         <div className={`absolute top-4 right-4 md:top-6 md:right-6 z-50 flex items-start gap-3 transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
           <DailyGoalRing dailyTotal={dailyTotal} formatTime={formatTime} />
           <StreakBadge user={user} />
@@ -404,7 +405,7 @@ function App() {
       </main>
 
       {/* Left panel widgets */}
-      {location.pathname !== '/stats' && (
+      {!isStatsPage && (
         <div className={`absolute bottom-4 left-4 md:bottom-6 md:left-6 z-50 flex flex-col gap-4 transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
           
           {/* Active Widget Render */}

@@ -13,6 +13,152 @@ export default function StatsPage() {
 
   const [comparePeriod, setComparePeriod] = useState('weekly');
   const [compareOffset, setCompareOffset] = useState(1);
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+
+  const handleExport = (period) => {
+    if (!fetchedData) return;
+
+    const dataMap = {};
+    const tagSum = {};
+    fetchedData.forEach(d => {
+      dataMap[d.date] = d.totalMs;
+      if (d.tags) {
+        for (const [tag, duration] of Object.entries(d.tags)) {
+          tagSum[tag] = (tagSum[tag] || 0) + duration;
+        }
+      }
+    });
+
+    const dRef = new Date();
+    dRef.setTime(dRef.getTime() - 4 * 60 * 60 * 1000); 
+
+    let thisPeriodMs = 0;
+    let lastPeriodMs = 0;
+
+    let periodDays = 0;
+    if (period === 'weekly') periodDays = 7;
+    else if (period === 'monthly') periodDays = 28;
+    else periodDays = 365; // allTime
+
+    for (let i = 0; i < periodDays; i++) {
+      const d = new Date(dRef);
+      d.setDate(d.getDate() - i);
+      thisPeriodMs += dataMap[d.toISOString().split('T')[0]] || 0;
+    }
+    for (let i = periodDays; i < periodDays * 2; i++) {
+      const d = new Date(dRef);
+      d.setDate(d.getDate() - i);
+      lastPeriodMs += dataMap[d.toISOString().split('T')[0]] || 0;
+    }
+
+    const thisPeriodHours = Number((thisPeriodMs / 3600000).toFixed(1));
+    const lastPeriodHours = Number((lastPeriodMs / 3600000).toFixed(1));
+    
+    const divisor = period === 'weekly' ? 7 : period === 'monthly' ? 28 : Math.max(1, Object.keys(dataMap).length || 1);
+    const dailyAverageHours = Number((thisPeriodMs / 3600000 / divisor).toFixed(1));
+
+    let percentChange = 0;
+    if (lastPeriodMs > 0) {
+      percentChange = Math.round(((thisPeriodMs - lastPeriodMs) / lastPeriodMs) * 100);
+    } else if (thisPeriodMs > 0) {
+      percentChange = 100;
+    }
+
+    let bestDayMs = 0;
+    let bestDayStr = "None";
+    Object.entries(dataMap).forEach(([date, ms]) => {
+      if (ms > bestDayMs) {
+        bestDayMs = ms;
+        bestDayStr = date;
+      }
+    });
+    const bestDayHours = Number((bestDayMs / 3600000).toFixed(1));
+
+    let currentStreak = 0;
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(dRef);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const ms = dataMap[dateStr] || 0;
+      if (i === 0 && ms < 1800000) continue;
+      if (ms >= 1800000) currentStreak++;
+      else if (i > 0) break;
+    }
+
+    const focusDistribution = [];
+    if (period === 'weekly') {
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(dRef);
+        d.setDate(d.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        focusDistribution.push({
+          date: dateStr,
+          day: d.toLocaleDateString('en-US', { weekday: 'short' }),
+          hours: Number(((dataMap[dateStr] || 0) / 3600000).toFixed(1))
+        });
+      }
+    } else if (period === 'monthly') {
+      for (let i = 3; i >= 0; i--) {
+        let ms = 0;
+        for (let j = 0; j < 7; j++) {
+           const d = new Date(dRef); 
+           d.setDate(d.getDate() - (i * 7 + j));
+           ms += dataMap[d.toISOString().split('T')[0]] || 0;
+        }
+        focusDistribution.push({
+          week: `W${4 - i}`,
+          hours: Number((ms / 3600000).toFixed(1))
+        });
+      }
+    } else {
+      for (let i = 5; i >= 0; i--) {
+        const d1 = new Date(dRef.getFullYear(), dRef.getMonth() - i, 1);
+        let ms = 0;
+        const year = d1.getFullYear();
+        const month = d1.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dateStr = new Date(year, month, d).toISOString().split('T')[0];
+          ms += dataMap[dateStr] || 0;
+        }
+        focusDistribution.push({
+          month: d1.toLocaleDateString('en-US', { month: 'short' }),
+          hours: Number((ms / 3600000).toFixed(1))
+        });
+      }
+    }
+
+    const exportData = {
+      period,
+      generatedAt: new Date().toISOString(),
+      metrics: {
+        totalFocusHours: thisPeriodHours,
+        dailyAverageHours,
+        vsLastPeriod: {
+          lastPeriodHours,
+          percentChange,
+          trajectory: percentChange >= 0 ? "Positive" : "Negative"
+        },
+        peakPerformance: {
+          date: bestDayStr,
+          hours: bestDayHours
+        },
+        currentStreakDays: currentStreak,
+      },
+      focusDistribution
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `focus_stats_${period}_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setIsExportMenuOpen(false);
+  };
 
   const stats = useMemo(() => {
     if (!fetchedData) return null;
@@ -290,10 +436,26 @@ export default function StatsPage() {
           <div>
             <h2 className="font-s-headline-lg text-s-headline-lg-mobile md:text-s-headline-lg text-primary text-glow">Analytics Engine</h2>
           </div>
-          <div className="flex bg-surface-container-high rounded-full p-1 border border-outline-variant font-s-label-sm text-s-label-sm">
-            <button onClick={() => { setComparePeriod('weekly'); setCompareOffset(1); }} className={`px-5 py-2 rounded-full transition-all ${comparePeriod === 'weekly' ? 'bg-primary-fixed text-on-primary-fixed font-bold shadow-md' : 'text-on-surface-variant hover:text-primary-fixed'}`}>Weekly</button>
-            <button onClick={() => { setComparePeriod('monthly'); setCompareOffset(1); }} className={`px-5 py-2 rounded-full transition-all ${comparePeriod === 'monthly' ? 'bg-primary-fixed text-on-primary-fixed font-bold shadow-md' : 'text-on-surface-variant hover:text-primary-fixed'}`}>Monthly</button>
-            <button onClick={() => { setComparePeriod('allTime'); setCompareOffset(1); }} className={`px-5 py-2 rounded-full transition-all ${comparePeriod === 'allTime' ? 'bg-primary-fixed text-on-primary-fixed font-bold shadow-md' : 'text-on-surface-variant hover:text-primary-fixed'}`}>All Time</button>
+          <div className="flex items-center gap-4 relative">
+            <div className="flex bg-surface-container-high rounded-full p-1 border border-outline-variant font-s-label-sm text-s-label-sm">
+              <button onClick={() => { setComparePeriod('weekly'); setCompareOffset(1); }} className={`px-5 py-2 rounded-full transition-all ${comparePeriod === 'weekly' ? 'bg-primary-fixed text-on-primary-fixed font-bold shadow-md' : 'text-on-surface-variant hover:text-primary-fixed'}`}>Weekly</button>
+              <button onClick={() => { setComparePeriod('monthly'); setCompareOffset(1); }} className={`px-5 py-2 rounded-full transition-all ${comparePeriod === 'monthly' ? 'bg-primary-fixed text-on-primary-fixed font-bold shadow-md' : 'text-on-surface-variant hover:text-primary-fixed'}`}>Monthly</button>
+              <button onClick={() => { setComparePeriod('allTime'); setCompareOffset(1); }} className={`px-5 py-2 rounded-full transition-all ${comparePeriod === 'allTime' ? 'bg-primary-fixed text-on-primary-fixed font-bold shadow-md' : 'text-on-surface-variant hover:text-primary-fixed'}`}>All Time</button>
+            </div>
+            
+            <div className="relative">
+              <button onClick={() => setIsExportMenuOpen(!isExportMenuOpen)} className="flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant text-on-surface px-4 py-2 rounded-full transition-all font-s-label-sm text-sm">
+                <span className="material-symbols-outlined text-[18px]">download</span>
+                Export
+              </button>
+              {isExportMenuOpen && (
+                <div className="absolute top-full right-0 mt-2 w-40 bg-surface-container-highest border border-outline-variant rounded-xl shadow-xl overflow-hidden z-[200] flex flex-col font-s-label-sm text-sm">
+                  <button onClick={() => handleExport('weekly')} className="px-4 py-3 text-left hover:bg-white/5 text-on-surface transition-colors">Current Week</button>
+                  <button onClick={() => handleExport('monthly')} className="px-4 py-3 text-left hover:bg-white/5 text-on-surface transition-colors border-t border-outline-variant/30">Current Month</button>
+                  <button onClick={() => handleExport('allTime')} className="px-4 py-3 text-left hover:bg-white/5 text-on-surface transition-colors border-t border-outline-variant/30">All Time</button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
