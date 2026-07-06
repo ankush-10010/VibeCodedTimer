@@ -97,6 +97,21 @@ export function generateFocusReport(period, fetchedData, userName) {
     else if (i > 0) break;
   }
 
+  let longestStreak = 0;
+  let tempStreak = 0;
+  for (let i = 364; i >= 0; i--) {
+    const d = new Date(dRef);
+    d.setDate(d.getDate() - i);
+    const ms = dataMap[fmtDate(d)] || 0;
+    if (ms >= 1800000) {
+      tempStreak++;
+      if (tempStreak > longestStreak) longestStreak = tempStreak;
+    } else {
+      tempStreak = 0;
+    }
+  }
+  if (currentStreak > longestStreak) longestStreak = currentStreak;
+
   // Consistency (last 30 days)
   let activeDays30 = 0;
   for (let i = 0; i < 30; i++) {
