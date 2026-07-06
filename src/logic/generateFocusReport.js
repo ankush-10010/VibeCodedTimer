@@ -18,7 +18,7 @@ import 'jspdf-autotable';
  * @param {string} userName     — display name of the user
  */
 export function generateFocusReport(period, fetchedData, userName) {
-  if (!fetchedData || fetchedData.length === 0) return;
+  if (!fetchedData) return;
 
   // ─── 1. Build lookup maps ──────────────────────────────────────────
   const dataMap = {};        // date → totalMs
