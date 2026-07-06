@@ -432,7 +432,7 @@ export default function StatsPage() {
       {/* MAIN CONTENT (Added larger padding and gaps for breathing room) */}
       <main className="pt-5 px-6 md:px-8 w-full max-w-[1100px] mx-auto flex flex-col gap-5 pb-32">
 
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 fade-in-stagger delay-1">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 fade-in-stagger delay-1 relative z-50">
           <div>
             <h2 className="font-s-headline-lg text-s-headline-lg-mobile md:text-s-headline-lg text-primary text-glow">Analytics Engine</h2>
           </div>
