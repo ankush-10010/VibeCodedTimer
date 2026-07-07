@@ -1,3 +1,5 @@
+import { DEFAULT_TAG } from './tags.js';
+
 export function getLogicalDateStr() {
     const now = new Date();
     // Shift back by 4 hours
@@ -19,7 +21,7 @@ export class FocusTimer {
         this.dailyTotal = 0; // in ms (Focus + Stopwatch)
         this.laps = []; // Array to store lap times
         this.tags = {}; // Record to store duration per tag
-        this.currentTag = 'Work'; // Default tag
+        this.currentTag = DEFAULT_TAG; // Default tag
         this.isRunning = false;
 
         this.currentDate = getLogicalDateStr();
@@ -36,7 +38,7 @@ export class FocusTimer {
                     this.dailyTotal = parsed.dailyTotal || 0;
                     this.laps = parsed.laps || [];
                     this.tags = parsed.tags || {};
-                    this.currentTag = parsed.currentTag || 'Work';
+                    this.currentTag = parsed.currentTag || DEFAULT_TAG;
 
                     // Self-healing: if dailyTotal is 0, it's impossible to have legitimate laps or tags for today.
                     // This clears poisoned data from the old date rollover bug.
@@ -166,6 +168,7 @@ export class FocusTimer {
             if (this.mode === 'stopwatch') {
                 this.timeElapsed += delta;
                 this.dailyTotal += delta;
+                this.tags[this.currentTag] = (this.tags[this.currentTag] || 0) + delta;
                 this.onTick(this.getState());
             } else if (this.mode === 'pomodoro') {
                 if (this.timeRemaining > 0) {

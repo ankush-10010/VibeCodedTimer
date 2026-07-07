@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { TAGS } from './logic/tags';
 import { useTimer } from './hooks/useTimer';
 import { getLogicalDateStr } from './logic/Timer';
 import TodoWidget from './components/TodoWidget';
@@ -277,21 +278,6 @@ function App() {
         <div className="flex gap-2 mb-6 flex-wrap justify-center">
           {mode === 'pomodoro' && (
             <>
-              <div className="relative group mr-2">
-                <select 
-                  value={currentTag} 
-                  onChange={(e) => setTag(e.target.value)} 
-                  className="appearance-none bg-white/10 hover:bg-white/20 border border-white/20 rounded-full py-1 pl-4 pr-8 text-primary text-sm focus:outline-none focus:border-white/40 cursor-pointer transition-colors backdrop-blur-md"
-                >
-                  <option className="bg-surface text-primary" value="Work">Work</option>
-                  <option className="bg-surface text-primary" value="Study">Study</option>
-                  <option className="bg-surface text-primary" value="Code">Code</option>
-                  <option className="bg-surface text-primary" value="Rest">Rest</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-primary">
-                  <span className="material-symbols-outlined text-[16px]">expand_more</span>
-                </div>
-              </div>
               <button onClick={() => handlePresetClick(25)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">25m</button>
               <button onClick={() => handlePresetClick(60)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">1h</button>
               <button onClick={() => handlePresetClick(180)} className="px-4 py-1 rounded-full border border-white/20 text-primary text-sm hover:bg-white/10">3h</button>
@@ -429,6 +415,21 @@ function App() {
             <button onClick={() => setActiveWidget(activeWidget === 'ambient' ? null : 'ambient')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'ambient' ? 'bg-white/20 text-primary' : ''}`}>
               <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">spa</span>
             </button>
+            <div className="w-[1px] h-6 bg-white/20 my-auto mx-1"></div>
+            <div className="relative group flex items-center">
+              <select 
+                value={currentTag} 
+                onChange={(e) => setTag(e.target.value)} 
+                className="appearance-none bg-transparent hover:bg-white/10 transition-all p-2 pl-8 pr-3 rounded-full text-on-surface-variant group-hover:text-primary focus:outline-none cursor-pointer text-sm font-medium"
+              >
+                {TAGS.map(tag => (
+                  <option key={tag} className="bg-surface text-primary" value={tag}>{tag}</option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-on-surface-variant group-hover:text-primary transition-colors">
+                <span className="material-symbols-outlined text-[18px]">sell</span>
+              </div>
+            </div>
           </div>
         </div>
       )}

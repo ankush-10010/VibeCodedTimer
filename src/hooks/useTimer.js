@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { FocusTimer, getLogicalDateStr } from '../logic/Timer';
+import { DEFAULT_TAG } from '../logic/tags';
 
 export function useTimer() {
     const getInitialState = () => {
@@ -11,7 +12,7 @@ export function useTimer() {
             dailyTotal: 0,
             laps: [],
             tags: {},
-            currentTag: 'Work'
+            currentTag: DEFAULT_TAG
         };
         const saved = localStorage.getItem('focusTimerState');
         if (saved) {
