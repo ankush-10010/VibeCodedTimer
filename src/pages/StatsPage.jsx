@@ -305,7 +305,7 @@ export default function StatsPage() {
   
 
   return (
-    <div className="stats-page-container fixed inset-0 overflow-y-auto z-[100] bg-background text-on-surface font-s-body-md pb-32">
+    <div className="stats-page-container fixed inset-0 overflow-y-auto z-[100] bg-background text-on-surface font-s-body-md pb-8">
       
       <div className="ambient-bg fixed inset-0 pointer-events-none z-[-1]">
         <div className="blur-orb orb-yellow"></div>
@@ -360,7 +360,7 @@ export default function StatsPage() {
       </aside> */}
 
       {/* MAIN CONTENT (Added larger padding and gaps for breathing room) */}
-      <main className="pt-5 px-6 md:px-8 w-full max-w-[1100px] mx-auto flex flex-col gap-5 pb-32">
+      <main className="pt-5 px-6 md:px-8 w-full max-w-[1100px] mx-auto flex flex-col gap-5 pb-8">
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 fade-in-stagger delay-1 relative z-50">
           <div>
@@ -600,18 +600,25 @@ export default function StatsPage() {
         </div>
       </main>
 
-      {/* FOOTER */}
-      <footer className="bg-background/95 backdrop-blur-lg border-t border-primary-fixed/30 shadow-[0_-4px_20px_rgba(216,202,0,0.15)] fixed bottom-0 w-full z-50 flex flex-col justify-center px-6 md:px-8 h-20">
-        <div className="flex justify-between items-end mb-3 w-full">
-          <span className="font-s-label-sm text-sm font-bold text-primary-fixed uppercase tracking-wider">Weekly Goal Progress</span>
-          <span className="font-s-label-sm text-sm text-on-surface-variant tabular-nums">{stats.actualThisWeekHours}h / 72h</span>
-        </div>
-        <div className="w-full h-2.5 bg-surface-container-highest rounded-full overflow-hidden border border-outline-variant/50 relative">
-          <div className="h-full bg-primary-fixed rounded-full box-glow relative transition-all duration-500" style={{ width: `${stats.weeklyProgressPercent}%` }}>
+      {/* RIGHT SIDE THERMOMETER GOAL */}
+      <div className="fixed right-2 md:right-6 top-1/2 -translate-y-1/2 h-[300px] md:h-[400px] flex flex-col items-center justify-between z-50 bg-background/80 backdrop-blur-xl p-2 md:p-3 rounded-full border border-outline-variant/50 shadow-[0_0_20px_rgba(216,202,0,0.1)] group transition-all">
+        <div className="font-s-label-sm text-[10px] font-bold text-on-surface-variant uppercase">72h</div>
+        
+        <div className="w-1.5 md:w-2.5 h-full my-3 bg-surface-container-highest rounded-full overflow-hidden border border-outline-variant/30 relative flex flex-col justify-end">
+          <div className="w-full bg-primary-fixed rounded-full box-glow relative transition-all duration-1000" style={{ height: `${Math.min(100, stats.weeklyProgressPercent)}%` }}>
             <div className="absolute inset-0 bg-white/20 w-full h-full" style={{ animation: 'pulse 2s infinite' }}></div>
           </div>
         </div>
-      </footer>
+        
+        <div className="font-s-label-sm text-[10px] md:text-xs font-bold text-primary-fixed tabular-nums">{Math.round(stats.actualThisWeekHours)}h</div>
+        
+        {/* Tooltip on hover */}
+        <div className="absolute right-[120%] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-surface-container-highest border border-outline-variant px-3 py-2 rounded-lg text-xs whitespace-nowrap shadow-xl flex flex-col items-end gap-1">
+          <span className="text-on-surface font-medium font-s-label-sm">Weekly Goal</span>
+          <span className="text-primary-fixed tabular-nums font-mono">{stats.actualThisWeekHours}h / 72h</span>
+          <span className="text-on-surface-variant tabular-nums font-mono">{stats.weeklyProgressPercent}%</span>
+        </div>
+      </div>
     </div>
   );
 }
