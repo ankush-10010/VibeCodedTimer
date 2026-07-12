@@ -1,10 +1,11 @@
 import { useUser } from '@clerk/clerk-react';
-import { useQuery } from 'convex/react';
+import { useQuery, useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useNavigate, Link } from 'react-router-dom';
 import './StatsPage.css';
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { generateFocusReport } from '../logic/generateFocusReport';
+import { TAG_COLORS } from '../logic/tags';
 
 export default function StatsPage() {
   const navigate = useNavigate();
@@ -15,6 +16,9 @@ export default function StatsPage() {
   const [comparePeriod, setComparePeriod] = useState('weekly');
   const [compareOffset, setCompareOffset] = useState(1);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState(null);
+  const [suggestionLoading, setSuggestionLoading] = useState(false);
+  const generateSuggestion = useAction(api.suggestions.generateSuggestion);
 
   const handleExport = (period) => {
     generateFocusReport(period, fetchedData, user?.fullName || user?.firstName || 'User');
@@ -157,9 +161,25 @@ export default function StatsPage() {
       }
     }
 
-    const sortedTags = Object.entries(tagSum).sort((a,b) => b[1] - a[1]);
-    const topTags = sortedTags.slice(0, 3).map(([name, ms]) => ({
-      name, percent: Math.round((ms / Math.max(1, totalAllTimeMs)) * 100)
+    // Compute period-scoped tag distribution
+    const periodTagSum = {};
+    const periodDays = comparePeriod === 'weekly' ? 7 : comparePeriod === 'monthly' ? 28 : 365;
+    for (let i = 0; i < periodDays; i++) {
+      const d = new Date(dRef);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayData = fetchedData.find(fd => fd.date === dateStr);
+      if (dayData && dayData.tags) {
+        for (const [tag, duration] of Object.entries(dayData.tags)) {
+          periodTagSum[tag] = (periodTagSum[tag] || 0) + duration;
+        }
+      }
+    }
+    const periodTagTotal = Object.values(periodTagSum).reduce((a, b) => a + b, 0);
+    const sortedTags = Object.entries(periodTagSum).sort((a,b) => b[1] - a[1]);
+    const topTags = sortedTags.slice(0, 5).map(([name, ms]) => ({
+      name, percent: Math.round((ms / Math.max(1, periodTagTotal)) * 100),
+      color: TAG_COLORS[name] || '#c8c6c5'
     }));
 
     let currentStreak = 0;
@@ -223,6 +243,55 @@ export default function StatsPage() {
       heatmapScrollRef.current.scrollLeft = heatmapScrollRef.current.scrollWidth;
     }
   }, [stats]); // Runs whenever the stats object finishes loading
+
+  // Fetch AI suggestion when stats are ready, using localStorage to cache it per day
+  useEffect(() => {
+    setAiSuggestion(null);
+  }, [comparePeriod]);
+
+  useEffect(() => {
+    if (!stats || !fetchedData || aiSuggestion || suggestionLoading) return;
+
+    const today = new Date().toISOString().split('T')[0];
+    const cacheKey = `aiSuggestionCache_${comparePeriod}`;
+    const cached = localStorage.getItem(cacheKey);
+
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed.date === today) {
+          setAiSuggestion(parsed.suggestion);
+          return;
+        }
+      } catch (e) {
+        // Ignore parsing errors and fetch new
+      }
+    }
+
+    setSuggestionLoading(true);
+    const summary = [
+      `Period: ${comparePeriod}`,
+      `This period: ${stats.thisWeekHours}h, Last period: ${stats.lastWeekHours}h (${stats.percentChange >= 0 ? '+' : ''}${stats.percentChange}%)`,
+      `Daily average: ${stats.dailyAverage}h`,
+      `Current streak: ${stats.currentStreak} days, Longest: ${stats.longestStreak} days`,
+      `Consistency (30-day): ${stats.consistency}%`,
+      `Best day: ${stats.bestDayStr} (${stats.bestDayHours}h)`,
+      `Tag distribution: ${stats.topTags.map(t => `${t.name} ${t.percent}%`).join(', ') || 'No tags'}`,
+      `Total all-time: ${stats.totalAllTimeHours}h`,
+      `Weekly goal progress: ${stats.actualThisWeekHours}h / 72h`
+    ].join('\n');
+
+    generateSuggestion({ statsSummary: summary })
+      .then(result => {
+        setAiSuggestion(result.suggestion);
+        localStorage.setItem(cacheKey, JSON.stringify({
+          date: today,
+          suggestion: result.suggestion
+        }));
+      })
+      .catch(() => setAiSuggestion('Keep pushing! Consistency beats intensity every time.'))
+      .finally(() => setSuggestionLoading(false));
+  }, [stats, fetchedData, comparePeriod]);
 
   if (!user || !stats) {
     return <div className="fixed inset-0 bg-background text-primary-fixed flex flex-col items-center justify-center z-[100]">
@@ -455,7 +524,7 @@ export default function StatsPage() {
                 <ul className="font-s-label-sm text-sm text-outline space-y-3">
                   {stats.topTags.map((tag, i) => (
                     <li key={tag.name} className="flex items-center justify-between w-full">
-                      <span className="flex items-center gap-3"><span className={`w-3 h-3 rounded-sm ${i === 0 ? 'bg-primary-fixed box-glow' : i === 1 ? 'bg-tertiary-fixed' : 'bg-secondary'}`}></span> {tag.name}</span>
+                      <span className="flex items-center gap-3"><span className="w-3 h-3 rounded-sm" style={{ backgroundColor: tag.color, boxShadow: i === 0 ? `0 0 8px ${tag.color}` : 'none' }}></span> {tag.name}</span>
                       <span className="tabular-nums text-on-surface">{tag.percent}%</span>
                     </li>
                   ))}
@@ -463,16 +532,34 @@ export default function StatsPage() {
                 </ul>
               </div>
               <div className="w-28 h-28 rounded-full border-[6px] border-surface-container-high relative overflow-hidden flex-shrink-0">
-                <div className="absolute inset-0 rounded-full" style={{ background: 'conic-gradient(#f7e600 0% 45%, #6cf7f7 45% 75%, #c8c6c5 75% 100%)' }}></div>
+                <div className="absolute inset-0 rounded-full" style={{ background: (() => {
+                  if (stats.topTags.length === 0) return '#333333';
+                  let gradientParts = [];
+                  let cumulative = 0;
+                  stats.topTags.forEach(tag => {
+                    const start = cumulative;
+                    cumulative += tag.percent;
+                    gradientParts.push(`${tag.color} ${start}% ${cumulative}%`);
+                  });
+                  if (cumulative < 100) {
+                    gradientParts.push(`#333333 ${cumulative}% 100%`);
+                  }
+                  return `conic-gradient(${gradientParts.join(', ')})`;
+                })() }}></div>
                 <div className="absolute inset-2 bg-[#1A1A1A] rounded-full"></div>
               </div>
             </div>
 
             <div className="stats-glass-panel rounded-xl p-5 border-l-4 border-l-primary-fixed flex items-start gap-4 bg-primary-fixed/5">
-              <span className="material-symbols-outlined text-primary-fixed mt-1 text-2xl" data-icon="tips_and_updates">tips_and_updates</span>
+              <span className="material-symbols-outlined text-primary-fixed mt-1 text-2xl" data-icon={suggestionLoading ? 'hourglass_top' : 'tips_and_updates'}>{suggestionLoading ? 'hourglass_top' : 'tips_and_updates'}</span>
               <div>
-                <div className="font-s-label-sm text-sm text-primary-fixed mb-2">System Suggestion</div>
-                <p className="font-s-body-md text-sm text-on-surface-variant leading-relaxed">You typically lose focus around 2:00 PM. Consider scheduling a 15-minute break before then to maintain peak efficiency.</p>
+                <div className="font-s-label-sm text-sm text-primary-fixed mb-2 flex items-center gap-2">
+                  AI Suggestion
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary-fixed/10 border border-primary-fixed/30 text-primary-fixed/70 font-normal">Gemini</span>
+                </div>
+                <p className="font-s-body-md text-sm text-on-surface-variant leading-relaxed">
+                  {suggestionLoading ? 'Analyzing your focus patterns...' : (aiSuggestion || 'Keep pushing! Consistency beats intensity every time.')}
+                </p>
               </div>
             </div>
           </div>

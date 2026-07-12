@@ -201,9 +201,9 @@ export function generateFocusReport(period, fetchedData, userName) {
        `;
     }).join('');
 
-    // Distribution
+    // Distribution — scoped to the report's period
     const periodTagSum = {};
-    for (let i = 0; i < 365; i++) {
+    for (let i = 0; i < periodDays; i++) {
       const d = new Date(dRef);
       d.setDate(d.getDate() - i);
       const tags = tagMapByDate[fmtDate(d)] || {};
@@ -211,12 +211,13 @@ export function generateFocusReport(period, fetchedData, userName) {
         periodTagSum[tag] = (periodTagSum[tag] || 0) + ms;
       }
     }
+    const periodTagTotal = Object.values(periodTagSum).reduce((a, b) => a + b, 0);
     const allSortedTags = Object.entries(periodTagSum).sort((a, b) => b[1] - a[1]);
     const top4Tags = allSortedTags.slice(0, 4);
     const colors = ['bg-neon', 'bg-[#D4AF37]', 'bg-outline-variant', 'bg-outline-variant'];
     const textColors = ['text-neon', 'text-gold', 'text-on-surface-variant', 'text-on-surface-variant'];
     const tagDistributionHtml = top4Tags.map(([t, ms], idx) => {
-      const pct = thisPeriodMs > 0 ? Math.round((ms / thisPeriodMs) * 100) : 0;
+      const pct = periodTagTotal > 0 ? Math.round((ms / periodTagTotal) * 100) : 0;
       const color = colors[idx];
       const textColor = textColors[idx];
       const shadow = idx === 0 ? 'shadow-[0_0_8px_rgba(255,238,0,0.5)]' : '';
@@ -657,11 +658,12 @@ ${tagDistributionHtml}
         monthlyTagSum[tag] = (monthlyTagSum[tag] || 0) + ms;
       }
     }
+    const monthlyTagTotal = Object.values(monthlyTagSum).reduce((a, b) => a + b, 0);
     const sortedMonthlyTags = Object.entries(monthlyTagSum).sort((a,b) => b[1] - a[1]);
     const top3Tags = sortedMonthlyTags.slice(0, 3);
     const mColors = ['bg-primary-container', 'bg-tertiary-container', 'bg-surface-variant'];
     const mTagHtml = top3Tags.map(([t, ms], idx) => {
-      const pct = thisPeriodMs > 0 ? Math.round((ms / thisPeriodMs) * 100) : 0;
+      const pct = monthlyTagTotal > 0 ? Math.round((ms / monthlyTagTotal) * 100) : 0;
       return `
 <div class="w-full">
 <div class="flex justify-between font-data-mono text-data-mono text-primary mb-2">
