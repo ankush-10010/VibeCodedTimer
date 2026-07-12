@@ -402,32 +402,44 @@ function App() {
             <AmbientSoundWidget isOpen={activeWidget === 'ambient'} onClose={() => setActiveWidget(null)} />
           </div>
 
-          <div className="glass-panel rounded-full px-3 md:px-4 py-2 flex gap-2 md:gap-4 shadow-2xl border border-white/20">
-            <button onClick={() => setActiveWidget(activeWidget === 'tasks' ? null : 'tasks')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'tasks' ? 'bg-white/20 text-primary' : ''}`}>
-              <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">check_circle</span>
-            </button>
-            <button onClick={() => setActiveWidget(activeWidget === 'music' ? null : 'music')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'music' ? 'bg-white/20 text-primary' : ''}`}>
-              <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">music_note</span>
-            </button>
-            <button onClick={() => setActiveWidget(activeWidget === 'notes' ? null : 'notes')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'notes' ? 'bg-white/20 text-primary' : ''}`}>
-              <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">edit_note</span>
-            </button>
-            <button onClick={() => setActiveWidget(activeWidget === 'ambient' ? null : 'ambient')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group ${activeWidget === 'ambient' ? 'bg-white/20 text-primary' : ''}`}>
-              <span className="material-symbols-outlined group-hover:text-primary transition-colors text-[20px]">spa</span>
-            </button>
-            <div className="w-[1px] h-6 bg-white/20 my-auto mx-1"></div>
-            <div className="relative group flex items-center">
-              <select 
-                value={currentTag} 
-                onChange={(e) => setTag(e.target.value)} 
-                className="appearance-none bg-transparent hover:bg-white/10 transition-all p-2 pl-8 pr-3 rounded-full text-on-surface-variant group-hover:text-primary focus:outline-none cursor-pointer text-sm font-medium"
-              >
-                {TAGS.map(tag => (
-                  <option key={tag} className="bg-surface text-primary" value={tag}>{tag}</option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-on-surface-variant group-hover:text-primary transition-colors">
-                <span className="material-symbols-outlined text-[18px]">sell</span>
+          <div className="group flex items-center">
+            <div className="glass-panel rounded-full flex shadow-2xl border border-white/20 overflow-hidden transition-all duration-500 max-w-[50px] group-hover:max-w-[500px] h-[50px]">
+              {/* Collapsed Icon */}
+              <div className="flex items-center justify-center w-[50px] h-[50px] shrink-0 text-on-surface-variant group-hover:text-primary transition-colors cursor-default">
+                 <span className="material-symbols-outlined text-[24px]">widgets</span>
+              </div>
+              
+              {/* Expanded Content */}
+              <div className="flex gap-1 md:gap-2 pr-3 md:pr-4 py-1 items-center opacity-0 group-hover:opacity-100 transition-opacity duration-500 min-w-max">
+                <button onClick={() => setActiveWidget(activeWidget === 'tasks' ? null : 'tasks')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group/btn ${activeWidget === 'tasks' ? 'bg-white/20 text-primary' : ''}`}>
+                  <span className="material-symbols-outlined group-hover/btn:text-primary transition-colors text-[20px]">check_circle</span>
+                </button>
+                <button onClick={() => setActiveWidget(activeWidget === 'music' ? null : 'music')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group/btn ${activeWidget === 'music' ? 'bg-white/20 text-primary' : ''}`}>
+                  <span className="material-symbols-outlined group-hover/btn:text-primary transition-colors text-[20px]">music_note</span>
+                </button>
+                <button onClick={() => setActiveWidget(activeWidget === 'notes' ? null : 'notes')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group/btn ${activeWidget === 'notes' ? 'bg-white/20 text-primary' : ''}`}>
+                  <span className="material-symbols-outlined group-hover/btn:text-primary transition-colors text-[20px]">edit_note</span>
+                </button>
+                <button onClick={() => setActiveWidget(activeWidget === 'ambient' ? null : 'ambient')} className={`text-on-surface-variant hover:bg-white/10 transition-all p-2 rounded-full flex flex-col items-center group/btn ${activeWidget === 'ambient' ? 'bg-white/20 text-primary' : ''}`}>
+                  <span className="material-symbols-outlined group-hover/btn:text-primary transition-colors text-[20px]">spa</span>
+                </button>
+                
+                <div className="w-[1px] h-6 bg-white/20 mx-1"></div>
+                
+                <div className="relative group/tag flex items-center">
+                  <select 
+                    value={currentTag} 
+                    onChange={(e) => setTag(e.target.value)} 
+                    className="appearance-none bg-transparent hover:bg-white/10 transition-all py-2 pl-8 pr-3 rounded-full text-on-surface-variant group-hover/tag:text-primary focus:outline-none cursor-pointer text-sm font-medium h-[36px] leading-tight"
+                  >
+                    {TAGS.map(tag => (
+                      <option key={tag} className="bg-surface text-primary" value={tag}>{tag}</option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2 text-on-surface-variant group-hover/tag:text-primary transition-colors">
+                    <span className="material-symbols-outlined text-[18px]">sell</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
