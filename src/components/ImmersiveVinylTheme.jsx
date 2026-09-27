@@ -33,7 +33,7 @@ export default function VinylRecord({ track, isPlaying, onTogglePlay, spotifyCon
           <div className="absolute inset-[3px] rounded-full border border-black/80 pointer-events-none" />
 
           {/* CENTER LABEL WITH ALBUM ART – uses top/left/transform for reliable centering */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110px] h-[110px] sm:w-[140px] sm:h-[140px] md:w-[164px] md:h-[164px] rounded-full overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.85),inset_0_0_15px_rgba(0,0,0,0.6)] border-[4px] border-[#101014] bg-[#1a1a1f]">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[168px] h-[168px] sm:w-[216px] sm:h-[216px] md:w-[250px] md:h-[250px] rounded-full overflow-hidden shadow-[0_0_20px_rgba(0,0,0,0.85),inset_0_0_15px_rgba(0,0,0,0.6)] border-[4px] border-[#101014] bg-[#1a1a1f]">
             {/* Album art image */}
             {albumArt ? (
               <img
