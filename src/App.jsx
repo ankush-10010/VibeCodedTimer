@@ -10,7 +10,7 @@ import AmbientSoundWidget from './components/AmbientSoundWidget';
 import DailyGoalRing from './components/DailyGoalRing';
 import StreakBadge from './components/StreakBadge';
 import BackgroundLayer from './components/BackgroundLayer';
-import ImmersiveVinylTheme from './components/ImmersiveVinylTheme';
+import VinylRecord from './components/ImmersiveVinylTheme';
 import StatsPage from './pages/StatsPage';
 import './index.css';
 
@@ -334,19 +334,13 @@ function App() {
     </div>
   );
 
+  const isTimerRoute = mode === 'stopwatch' || mode === 'pomodoro' || mode === 'break';
+  const showVinyl = vinylTheme && isTimerRoute && spotifyPlayback.track;
+
   return (
     <>
-      <SpotifyWidget ref={spotifyRef} isOpen={activeWidget === 'music' && !vinylTheme} onClose={() => setActiveWidget(null)} onPlaybackChange={setSpotifyPlayback} />
-      {vinylTheme ? (
-        <ImmersiveVinylTheme 
-          timerState={{ mode, isRunning, timeRemaining, timeElapsed, start, pause, reset, lap, laps, formatTime, setDuration, dailyTotal }}
-          spotifyState={spotifyPlayback}
-          spotifyControls={spotifyRef.current}
-          onExit={() => setVinylTheme(false)}
-        />
-      ) : (
-        <>
-          <BackgroundLayer backgroundType={backgroundType} />
+      <SpotifyWidget ref={spotifyRef} isOpen={activeWidget === 'music'} onClose={() => setActiveWidget(null)} onPlaybackChange={setSpotifyPlayback} />
+      <BackgroundLayer backgroundType={backgroundType} />
       {/* Focus Mode Dimmer */}
       <div 
         className={`fixed inset-0 pointer-events-none transition-all duration-1000 z-0 ${focusMode && isRunning ? 'opacity-100 bg-black/60' : 'opacity-0 bg-transparent'}`} 
@@ -356,7 +350,7 @@ function App() {
       {/* Top Left - Lap Report */}
       {!isFullscreen && !isStatsPage && (
         <div className={`absolute top-4 left-4 md:top-6 md:left-6 z-50 flex flex-col gap-2 max-w-[80vw] md:max-w-none transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
-          {mode === 'stopwatch' && (
+          {mode === 'stopwatch' && !showVinyl && (
             <div className="glass-panel p-3 md:p-4 rounded-xl min-w-[150px] md:min-w-[200px] max-h-[250px] overflow-y-auto no-scrollbar border border-white/10 shadow-lg animate-fade-in">
               <h3 className="text-primary font-label-caps text-label-caps mb-2 opacity-80">Lap Report</h3>
               {!laps || laps.length === 0 ? (
@@ -376,36 +370,94 @@ function App() {
         </div>
       )}
 
-      {/* Top Right - Daily Goal + Streak */}
+      {/* Top Right - Daily Goal + Streak OR Compact Timer (when vinyl is active) */}
       {!isFullscreen && !isStatsPage && (
-        <div className={`absolute top-4 right-4 md:top-6 md:right-6 z-50 flex items-start gap-3 transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
-          <DailyGoalRing dailyTotal={dailyTotal} formatTime={formatTime} />
-          <StreakBadge user={user} />
+        <div className={`absolute top-4 right-4 md:top-6 md:right-6 z-50 flex flex-col items-end gap-3 transition-opacity duration-1000 ${focusMode && isRunning ? 'opacity-0 pointer-events-none [&>*]:pointer-events-none' : 'pointer-events-none [&>*]:pointer-events-auto'}`}>
+          {showVinyl ? (
+            <>
+              {/* Compact glassmorphic timer panel */}
+              <div className="pointer-events-auto flex items-center gap-4 px-5 py-2.5 rounded-2xl bg-white/[0.06] backdrop-blur-2xl border border-white/[0.12] shadow-2xl animate-fade-in">
+                <div className="flex flex-col items-start">
+                  <div className="flex items-center gap-1.5 text-[10px] tracking-wider uppercase font-semibold text-white/40">
+                    <span className="material-symbols-outlined text-xs">{mode === 'stopwatch' ? 'timer' : 'hourglass_empty'}</span>
+                    <span>{mode === 'stopwatch' ? 'Stopwatch' : mode === 'break' ? 'Break' : 'Focus'}</span>
+                  </div>
+                  <span className="font-mono text-2xl md:text-3xl font-bold tracking-tight text-primary tabular-nums">
+                    {mode === 'stopwatch' ? formatTime(timeElapsed) : formatTime(timeRemaining)}
+                  </span>
+                </div>
+                <div className="h-8 w-px bg-white/10" />
+                <div className="flex items-center gap-1.5">
+                  <button onClick={isRunning ? pause : start} className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-primary flex items-center justify-center transition-all active:scale-95">
+                    <span className="material-symbols-outlined text-lg">{isRunning ? 'pause' : 'play_arrow'}</span>
+                  </button>
+                  {mode === 'stopwatch' && (
+                    <button onClick={lap} className="w-8 h-8 rounded-full bg-transparent hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-colors">
+                      <span className="material-symbols-outlined text-sm">flag</span>
+                    </button>
+                  )}
+                  <button onClick={reset} className="w-8 h-8 rounded-full bg-transparent hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-colors">
+                    <span className="material-symbols-outlined text-sm">restart_alt</span>
+                  </button>
+                </div>
+              </div>
+              {/* Laps list below timer when in stopwatch mode */}
+              {mode === 'stopwatch' && laps && laps.length > 0 && (
+                <div className="pointer-events-auto w-full bg-white/[0.04] backdrop-blur-xl border border-white/10 rounded-2xl p-3 max-h-40 overflow-y-auto no-scrollbar shadow-xl animate-fade-in">
+                  <ul className="space-y-1">
+                    {laps.map((lapTime, i) => (
+                      <li key={i} className="flex justify-between text-xs text-white/80">
+                        <span className="text-white/40">Lap {i + 1}</span>
+                        <span className="font-mono">{formatTime(lapTime)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <DailyGoalRing dailyTotal={dailyTotal} formatTime={formatTime} />
+              <StreakBadge user={user} />
+            </>
+          )}
         </div>
       )}
 
       <main className="flex-grow flex flex-col items-center justify-center z-10 text-center relative w-full h-full transition-opacity duration-300 px-4">
-        <h1 className="font-display-clock text-display-clock-mobile md:text-display-clock drop-shadow-2xl text-primary font-bold tracking-tighter tabular-nums" id="main-clock">
-          {getDisplayTime()}
-        </h1>
+        {showVinyl ? (
+          /* Vinyl Record replaces the clock */
+          <VinylRecord
+            track={spotifyPlayback.track}
+            isPlaying={spotifyPlayback.isPlaying}
+            onTogglePlay={() => spotifyRef.current?.togglePlay()}
+            spotifyControls={spotifyRef.current}
+          />
+        ) : (
+          <>
+            <h1 className="font-display-clock text-display-clock-mobile md:text-display-clock drop-shadow-2xl text-primary font-bold tracking-tighter tabular-nums" id="main-clock">
+              {getDisplayTime()}
+            </h1>
         
-        <Routes>
-          <Route path="/" element={
-            <div className="mt-stack-md flex flex-col items-center gap-3 animate-fade-in">
-              <p className="font-h2 text-h2 text-primary font-medium tracking-wide">
-                {getGreeting()}{user?.firstName ? `, ${user.firstName}` : ''}
-              </p>
-              <p className="font-body-lg text-body-lg text-primary/60 font-light tracking-wide italic max-w-md transition-opacity duration-700" style={{opacity: quoteVisible ? 1 : 0}}>
-                "{currentQuote}"
-              </p>
-            </div>
-          } />
-          <Route path="/stopwatch" element={timerWidgetUi} />
-          <Route path="/timer" element={timerWidgetUi} />
-          <Route path="/break" element={timerWidgetUi} />
-          <Route path="/stats" element={<StatsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            <Routes>
+              <Route path="/" element={
+                <div className="mt-stack-md flex flex-col items-center gap-3 animate-fade-in">
+                  <p className="font-h2 text-h2 text-primary font-medium tracking-wide">
+                    {getGreeting()}{user?.firstName ? `, ${user.firstName}` : ''}
+                  </p>
+                  <p className="font-body-lg text-body-lg text-primary/60 font-light tracking-wide italic max-w-md transition-opacity duration-700" style={{opacity: quoteVisible ? 1 : 0}}>
+                    "{currentQuote}"
+                  </p>
+                </div>
+              } />
+              <Route path="/stopwatch" element={timerWidgetUi} />
+              <Route path="/timer" element={timerWidgetUi} />
+              <Route path="/break" element={timerWidgetUi} />
+              <Route path="/stats" element={<StatsPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </>
+        )}
       </main>
 
       {/* Left panel widgets */}
@@ -697,8 +749,6 @@ function App() {
             <p className="text-[10px] text-on-surface-variant mt-4 text-center opacity-60">Press ? to toggle this overlay</p>
           </div>
         </div>
-      )}
-    </>
       )}
     </>
   );
