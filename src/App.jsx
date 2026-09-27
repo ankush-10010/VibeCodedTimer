@@ -10,6 +10,7 @@ import AmbientSoundWidget from './components/AmbientSoundWidget';
 import DailyGoalRing from './components/DailyGoalRing';
 import StreakBadge from './components/StreakBadge';
 import BackgroundLayer from './components/BackgroundLayer';
+import VinylPlayer from './components/VinylPlayer';
 import StatsPage from './pages/StatsPage';
 import './index.css';
 
@@ -36,6 +37,8 @@ function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('flocus-theme') || 'default');
   const [customColor, setCustomColor] = useState(() => localStorage.getItem('flocus-custom-color') || '#FFEE00');
   const [backgroundType, setBackgroundType] = useState(() => localStorage.getItem('flocus-background') || 'breathe');
+  const [vinylTheme, setVinylTheme] = useState(() => localStorage.getItem('flocus-vinyl-theme') === 'true');
+  const [spotifyPlayback, setSpotifyPlayback] = useState({ track: null, isPlaying: false, progress: 0, duration: 0 });
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   const location = useLocation();
@@ -100,6 +103,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem('flocus-background', backgroundType);
   }, [backgroundType]);
+
+  useEffect(() => {
+    localStorage.setItem('flocus-vinyl-theme', vinylTheme ? 'true' : 'false');
+  }, [vinylTheme]);
 
   // Quotes system
   const QUOTES = [
@@ -367,6 +374,22 @@ function App() {
       )}
 
       <main className="flex-grow flex flex-col items-center justify-center z-10 text-center relative w-full h-full transition-opacity duration-300 px-4">
+        {/* Vinyl Player - Dynamic Theme */}
+        {vinylTheme && spotifyPlayback.track && (
+          <div className="mb-6 animate-fade-in">
+            <VinylPlayer
+              track={spotifyPlayback.track}
+              isPlaying={spotifyPlayback.isPlaying}
+              onTogglePlay={() => {
+                // The SpotifyWidget handles the actual play/pause toggle
+                // We just toggle the music widget open if it's not already
+                if (activeWidget !== 'music') {
+                  setActiveWidget('music');
+                }
+              }}
+            />
+          </div>
+        )}
         <h1 className="font-display-clock text-display-clock-mobile md:text-display-clock drop-shadow-2xl text-primary font-bold tracking-tighter tabular-nums" id="main-clock">
           {getDisplayTime()}
         </h1>
@@ -398,7 +421,7 @@ function App() {
           <div className="relative">
             {activeWidget === 'tasks' && <TodoWidget onClose={() => setActiveWidget(null)} />}
             {activeWidget === 'notes' && <NotesWidget onClose={() => setActiveWidget(null)} />}
-            <SpotifyWidget isOpen={activeWidget === 'music'} onClose={() => setActiveWidget(null)} />
+            <SpotifyWidget isOpen={activeWidget === 'music'} onClose={() => setActiveWidget(null)} onPlaybackChange={setSpotifyPlayback} />
             <AmbientSoundWidget isOpen={activeWidget === 'ambient'} onClose={() => setActiveWidget(null)} />
           </div>
 
@@ -567,6 +590,16 @@ function App() {
                   </div>
                   <button aria-checked={focusMode} className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${focusMode ? 'bg-secondary' : 'bg-surface-container-highest'}`} role="switch" type="button">
                     <span aria-hidden="true" className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${focusMode ? 'translate-x-5 bg-on-secondary' : 'translate-x-0 bg-on-surface-variant'}`}></span>
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between group cursor-pointer" onClick={() => setVinylTheme(!vinylTheme)}>
+                  <div className="flex items-center gap-4">
+                    <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">album</span>
+                    <span className="font-body-lg text-body-lg text-primary">Vinyl music player</span>
+                  </div>
+                  <button aria-checked={vinylTheme} className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${vinylTheme ? 'bg-secondary' : 'bg-surface-container-highest'}`} role="switch" type="button">
+                    <span aria-hidden="true" className={`pointer-events-none inline-block h-5 w-5 transform rounded-full shadow ring-0 transition duration-200 ease-in-out ${vinylTheme ? 'translate-x-5 bg-on-secondary' : 'translate-x-0 bg-on-surface-variant'}`}></span>
                   </button>
                 </div>
 
