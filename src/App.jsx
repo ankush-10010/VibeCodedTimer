@@ -10,7 +10,7 @@ import AmbientSoundWidget from './components/AmbientSoundWidget';
 import DailyGoalRing from './components/DailyGoalRing';
 import StreakBadge from './components/StreakBadge';
 import BackgroundLayer from './components/BackgroundLayer';
-import VinylPlayer from './components/VinylPlayer';
+import ImmersiveVinylTheme from './components/ImmersiveVinylTheme';
 import StatsPage from './pages/StatsPage';
 import './index.css';
 
@@ -39,6 +39,7 @@ function App() {
   const [backgroundType, setBackgroundType] = useState(() => localStorage.getItem('flocus-background') || 'breathe');
   const [vinylTheme, setVinylTheme] = useState(() => localStorage.getItem('flocus-vinyl-theme') === 'true');
   const [spotifyPlayback, setSpotifyPlayback] = useState({ track: null, isPlaying: false, progress: 0, duration: 0 });
+  const spotifyRef = useRef(null);
   const [deferredPrompt, setDeferredPrompt] = useState(null);
 
   const location = useLocation();
@@ -335,7 +336,17 @@ function App() {
 
   return (
     <>
-      <BackgroundLayer backgroundType={backgroundType} />
+      <SpotifyWidget ref={spotifyRef} isOpen={activeWidget === 'music' && !vinylTheme} onClose={() => setActiveWidget(null)} onPlaybackChange={setSpotifyPlayback} />
+      {vinylTheme ? (
+        <ImmersiveVinylTheme 
+          timerState={{ mode, isRunning, timeRemaining, timeElapsed, start, pause, reset, lap, laps, formatTime, setDuration, dailyTotal }}
+          spotifyState={spotifyPlayback}
+          spotifyControls={spotifyRef.current}
+          onExit={() => setVinylTheme(false)}
+        />
+      ) : (
+        <>
+          <BackgroundLayer backgroundType={backgroundType} />
       {/* Focus Mode Dimmer */}
       <div 
         className={`fixed inset-0 pointer-events-none transition-all duration-1000 z-0 ${focusMode && isRunning ? 'opacity-100 bg-black/60' : 'opacity-0 bg-transparent'}`} 
@@ -374,22 +385,6 @@ function App() {
       )}
 
       <main className="flex-grow flex flex-col items-center justify-center z-10 text-center relative w-full h-full transition-opacity duration-300 px-4">
-        {/* Vinyl Player - Dynamic Theme */}
-        {vinylTheme && spotifyPlayback.track && (
-          <div className="mb-6 animate-fade-in">
-            <VinylPlayer
-              track={spotifyPlayback.track}
-              isPlaying={spotifyPlayback.isPlaying}
-              onTogglePlay={() => {
-                // The SpotifyWidget handles the actual play/pause toggle
-                // We just toggle the music widget open if it's not already
-                if (activeWidget !== 'music') {
-                  setActiveWidget('music');
-                }
-              }}
-            />
-          </div>
-        )}
         <h1 className="font-display-clock text-display-clock-mobile md:text-display-clock drop-shadow-2xl text-primary font-bold tracking-tighter tabular-nums" id="main-clock">
           {getDisplayTime()}
         </h1>
@@ -421,7 +416,7 @@ function App() {
           <div className="relative">
             {activeWidget === 'tasks' && <TodoWidget onClose={() => setActiveWidget(null)} />}
             {activeWidget === 'notes' && <NotesWidget onClose={() => setActiveWidget(null)} />}
-            <SpotifyWidget isOpen={activeWidget === 'music'} onClose={() => setActiveWidget(null)} onPlaybackChange={setSpotifyPlayback} />
+            
             <AmbientSoundWidget isOpen={activeWidget === 'ambient'} onClose={() => setActiveWidget(null)} />
           </div>
 
@@ -704,7 +699,8 @@ function App() {
         </div>
       )}
     </>
+      )}
+    </>
   );
 }
-
 export default App;

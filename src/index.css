@@ -304,3 +304,47 @@
     max-width: 170px;
   }
 }
+
+/* ===== Immersive Vinyl Theme ===== */
+.vinyl-sheen {
+  background: conic-gradient(
+    from 45deg at 50% 50%,
+    rgba(255, 255, 255, 0.0) 0deg,
+    rgba(255, 255, 255, 0.09) 35deg,
+    rgba(255, 255, 255, 0.0) 70deg,
+    rgba(255, 255, 255, 0.0) 180deg,
+    rgba(255, 255, 255, 0.08) 215deg,
+    rgba(255, 255, 255, 0.0) 250deg,
+    rgba(255, 255, 255, 0.0) 360deg
+  );
+}
+
+.tonearm-origin {
+  transform-origin: 36px 36px;
+  transition: transform 1.2s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.tonearm-playing {
+  transform: rotate(27deg);
+}
+
+.tonearm-paused {
+  transform: rotate(0deg);
+}
+
+@keyframes spin-record {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.record-spinning {
+  animation: spin-record 4.2s linear infinite;
+}
+
+.animation-paused {
+  animation-play-state: paused !important;
+}
+
+.bg-radial-vignette {
+  background: radial-gradient(circle at center, rgba(10,10,14,0.4) 0%, rgba(5,5,8,0.92) 80%, #000000 100%);
+}

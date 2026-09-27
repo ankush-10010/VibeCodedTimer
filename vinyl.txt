@@ -1,0 +1,37 @@
+Build a full-page, minimalist music player and timer interface inspired by the "md Vinyl" app. 
+
+The aesthetic should be premium, dark, and highly focused on a realistic vinyl record experience, built with React and Tailwind CSS.
+
+### Overall Layout & Aesthetic
+- Full-screen container (`h-screen w-screen`) with a dark, moody background. Ideally, use a very heavy blur of the current album art or a deep gradient (e.g., `#121212` to `#000000`).
+- No visible scrollbars. The layout is locked and feels like a native desktop widget or app.
+- Use smooth transitions for all state changes.
+
+### Top Right: The Timer Section
+- Positioned absolutely in the top right corner with generous padding (e.g., `top-8 right-8`).
+- A sleek, glassmorphic pill or panel (e.g., `bg-white/10 backdrop-blur-md border border-white/10`).
+- Display a large, clean digital timer (e.g., "25:00") using a bold, monospaced or modern sans-serif font.
+- Include minimal, elegant icons (Play/Pause/Reset) next to or below the timer for Pomodoro controls.
+
+### Center: The Massive Vinyl Record
+- This is the hero element of the page. It should be huge, taking up roughly 60-70% of the viewport height.
+- **The Record:** A perfect circle with realistic vinyl textures (dark grey/black radial gradients with repeating subtle groove lines).
+- **The Center Label:** A smaller circle in the absolute center displaying the current track's Album Art. Give it a realistic paper texture or slight inner shadow.
+- **The Spindle:** A tiny metallic dot in the very center.
+- **Animation:** When `isPlaying` is true, the vinyl should spin continuously (`animate-spin` but slowed down to e.g., 4s per rotation). When paused, the animation should pause (`animation-play-state: paused`).
+
+### The Tonearm (Stylus)
+- Positioned slightly to the top-right of the vinyl record.
+- Draw a sleek, metallic or minimal white/grey tonearm using CSS shapes or an SVG.
+- **Interaction:** It must have a pivot point at its base. When `isPlaying` becomes true, the tonearm rotates smoothly inward to rest on the edge of the spinning record. When paused, it rotates smoothly back out to its resting position.
+
+### Bottom: Track Info & Controls
+- Positioned at the bottom center of the screen with generous bottom padding.
+- **Typography:** Large, bold, elegant text for the Track Name (white). Smaller, semi-transparent text for the Artist Name (e.g., `text-white/60`).
+- **Progress Bar:** A thin, sleek horizontal line representing track progress. The filled portion should be an accent color (or white), and the empty portion highly transparent. Include a tiny, smooth-gliding handle.
+- **Playback Controls:** Minimalist icons (Previous, Play/Pause, Next) spaced elegantly. The Play/Pause button should be slightly larger and perhaps housed in a subtle circular glassmorphic button.
+
+### Implementation Details
+- Use `lucide-react` or `material-symbols` for icons.
+- Provide a fully working React component prototype with dummy state (e.g., `const [isPlaying, setIsPlaying] = useState(false)`) so the vinyl spinning and tonearm animations can be tested immediately by clicking play.
+- Write custom CSS or Tailwind arbitrary variants in a `<style>` block if necessary to achieve the specific radial gradients for the vinyl grooves and the pivot point (`transform-origin`) for the tonearm.

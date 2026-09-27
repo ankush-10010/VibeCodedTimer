@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from 'react';
 import { SpotifyApi } from '@spotify/web-api-ts-sdk';
 
-export default function SpotifyWidget({ isOpen, onClose, onPlaybackChange }) {
+const SpotifyWidget = forwardRef(function SpotifyWidget({ isOpen, onClose, onPlaybackChange }, ref) {
   const [sdk, setSdk] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [player, setPlayer] = useState(null);
@@ -253,6 +253,21 @@ export default function SpotifyWidget({ isOpen, onClose, onPlaybackChange }) {
   const track = playbackState?.track_window?.current_track;
   const isPaused = playbackState?.paused ?? true;
 
+  useImperativeHandle(ref, () => ({
+    togglePlay: handlePlayPause,
+    nextTrack: handleNext,
+    prevTrack: handlePrevious,
+    seek: (ms) => {
+      if (player) {
+        player.seek(ms).then(() => setProgress(ms));
+      }
+    },
+    setVolume: (v) => {
+      setVolume(v);
+      if (player) player.setVolume(v / 100).catch(() => {});
+    }
+  }));
+
   if (!isOpen) return null;
 
   return (
@@ -411,4 +426,6 @@ export default function SpotifyWidget({ isOpen, onClose, onPlaybackChange }) {
       )}
     </div>
   );
-}
+});
+
+export default SpotifyWidget;
