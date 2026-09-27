@@ -396,9 +396,6 @@ function App() {
                       <span className="material-symbols-outlined text-sm">flag</span>
                     </button>
                   )}
-                  <button onClick={reset} className="w-8 h-8 rounded-full bg-transparent hover:bg-white/10 text-white/50 hover:text-white flex items-center justify-center transition-colors">
-                    <span className="material-symbols-outlined text-sm">restart_alt</span>
-                  </button>
                 </div>
               </div>
               {/* Laps list below timer when in stopwatch mode */}
