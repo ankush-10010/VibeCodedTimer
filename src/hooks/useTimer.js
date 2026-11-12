@@ -29,6 +29,15 @@ export function useTimer() {
 
     const [timerState, setTimerState] = useState(getInitialState);
     const [showShortcuts, setShowShortcuts] = useState(false);
+    const [sleepNotice, setSleepNotice] = useState(null);
+
+    useEffect(() => {
+        if (!sleepNotice) return;
+        const timer = setTimeout(() => {
+            setSleepNotice(null);
+        }, 7000);
+        return () => clearTimeout(timer);
+    }, [sleepNotice]);
 
     const [autoChain, setAutoChain] = useState(() => {
         const saved = localStorage.getItem('focusAutoChain');
@@ -80,6 +89,24 @@ export function useTimer() {
                         timerRef.current?.start();
                     }
                 }
+            },
+            (gapMs) => {
+                const totalMins = Math.round(gapMs / 60000);
+                const durationText = totalMins >= 60 
+                    ? `${Math.floor(totalMins / 60)}h ${totalMins % 60}m` 
+                    : `${Math.max(1, totalMins)}m`;
+
+                setSleepNotice({
+                    durationText,
+                    gapMs
+                });
+
+                if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification('Timer Paused', { 
+                        body: `Timer paused automatically because your device was asleep for ${durationText}.`, 
+                        icon: '/favicon.png' 
+                    });
+                }
             }
         );
 
@@ -91,6 +118,7 @@ export function useTimer() {
         return () => {
             if (timerRef.current) {
                 timerRef.current.pause();
+                timerRef.current.destroy?.();
             }
         };
     }, []);
@@ -212,6 +240,8 @@ export function useTimer() {
         autoChain,
         setAutoChain,
         focusMode,
-        setFocusMode
+        setFocusMode,
+        sleepNotice,
+        dismissSleepNotice: () => setSleepNotice(null)
     };
 }

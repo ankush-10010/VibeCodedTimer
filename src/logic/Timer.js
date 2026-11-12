@@ -1,5 +1,36 @@
 import { DEFAULT_TAG } from './tags.js';
 
+export const SLEEP_THRESHOLD_MS = 20000; // 20 seconds: gaps larger than this indicate device sleep/suspend
+
+function createTimerWorker() {
+    if (typeof window === 'undefined' || typeof Worker === 'undefined') return null;
+    try {
+        const workerScript = `
+            let timer = null;
+            self.onmessage = function(e) {
+                if (e.data === 'start') {
+                    if (!timer) {
+                        timer = setInterval(function() {
+                            self.postMessage('tick');
+                        }, 30);
+                    }
+                } else if (e.data === 'stop') {
+                    if (timer) {
+                        clearInterval(timer);
+                        timer = null;
+                    }
+                }
+            };
+        `;
+        const blob = new Blob([workerScript], { type: 'application/javascript' });
+        const url = URL.createObjectURL(blob);
+        return new Worker(url);
+    } catch (e) {
+        console.warn('[FocusTimer] Web Worker creation failed, using setInterval fallback:', e);
+        return null;
+    }
+}
+
 export function getLogicalDateStr() {
     const now = new Date();
     // Shift back by 4 hours
@@ -14,7 +45,7 @@ export function getLogicalDateStr() {
 }
 
 export class FocusTimer {
-    constructor(onTickCallback, onCompleteCallback) {
+    constructor(onTickCallback, onCompleteCallback, onSleepPauseCallback) {
         this.mode = 'stopwatch'; // 'pomodoro' | 'stopwatch' | 'break'
         this.timeRemaining = 25 * 60 * 1000; // in ms
         this.timeElapsed = 0; // in ms
@@ -25,6 +56,9 @@ export class FocusTimer {
         this.isRunning = false;
 
         this.currentDate = getLogicalDateStr();
+        this.onTick = onTickCallback || (() => {});
+        this.onComplete = onCompleteCallback || (() => {});
+        this.onSleepPause = onSleepPauseCallback || (() => {});
 
         const savedState = localStorage.getItem('focusTimerState');
         if (savedState) {
@@ -48,23 +82,34 @@ export class FocusTimer {
                         this.timeElapsed = 0;
                     }
 
-                    // If it was running when closed, catch up
+                    // If it was running when closed, only catch up if within short reload window (<= 20s)
                     if (parsed.isRunning && parsed.lastTickTime) {
                         const now = Date.now();
                         const delta = now - parsed.lastTickTime;
                         
-                        if (this.mode === 'stopwatch') {
-                            this.timeElapsed += delta;
-                            this.dailyTotal += delta;
-                        } else if (this.mode === 'pomodoro' || this.mode === 'break') {
-                            this.timeRemaining -= delta;
-                            if (this.mode === 'pomodoro') {
+                        if (delta <= SLEEP_THRESHOLD_MS) {
+                            if (this.mode === 'stopwatch') {
+                                this.timeElapsed += delta;
                                 this.dailyTotal += delta;
-                                this.tags[this.currentTag] = (this.tags[this.currentTag] || 0) + delta;
+                            } else if (this.mode === 'pomodoro' || this.mode === 'break') {
+                                this.timeRemaining -= delta;
+                                if (this.mode === 'pomodoro') {
+                                    this.dailyTotal += delta;
+                                    this.tags[this.currentTag] = (this.tags[this.currentTag] || 0) + delta;
+                                }
+                                if (this.timeRemaining <= 0) {
+                                    this.timeRemaining = 0;
+                                }
                             }
-                            if (this.timeRemaining <= 0) {
-                                this.timeRemaining = 0;
-                            }
+                        } else {
+                            // Device was asleep or browser was closed for longer than threshold.
+                            // Do NOT add elapsed sleep time! Stay paused at saved time.
+                            this.isRunning = false;
+                            setTimeout(() => {
+                                if (this.onSleepPause) {
+                                    this.onSleepPause(delta);
+                                }
+                            }, 100);
                         }
                     }
                 } else {
@@ -82,18 +127,44 @@ export class FocusTimer {
         }
         
         this.interval = null;
+        this.isRunningInterval = false;
         this.lastTickTime = null;
         this.lastSavedTime = 0;
 
-        this.onTick = onTickCallback || (() => {});
-        this.onComplete = onCompleteCallback || (() => {});
-        
+        // Background-safe Web Worker heartbeat
+        this.worker = createTimerWorker();
+        if (this.worker) {
+            this.worker.onmessage = (e) => {
+                if (e.data === 'tick') {
+                    this._handleTick();
+                }
+            };
+        }
+
+        // Instant wake-up sleep detection via visibilitychange
+        this._handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && this.isRunning && this.lastTickTime) {
+                const now = Date.now();
+                const delta = now - this.lastTickTime;
+                if (delta > SLEEP_THRESHOLD_MS) {
+                    console.info(`[FocusTimer] Visibility change: sleep gap detected (${Math.round(delta / 1000)}s). Auto-pausing.`);
+                    this.pause();
+                    if (this.onSleepPause) {
+                        this.onSleepPause(delta);
+                    }
+                }
+            }
+        };
+        if (typeof document !== 'undefined') {
+            document.addEventListener('visibilitychange', this._handleVisibilityChange);
+        }
+
         if (this.timeRemaining <= 0 && this.mode !== 'stopwatch') {
             setTimeout(() => this.onComplete(), 0);
         }
 
         // Periodically check for date rollover (4 AM IST)
-        setInterval(() => this.checkDate(), 1000);
+        this.dateCheckInterval = setInterval(() => this.checkDate(), 1000);
         
         // Setup cross-tab sync
         this.channel = new BroadcastChannel('focus10010_sync');
@@ -157,54 +228,79 @@ export class FocusTimer {
     }
 
     _startInterval() {
-        if (this.interval) return;
-        this.interval = setInterval(() => {
-            this.checkDate(); // Ensure stats reset if midnight passes while running
+        if (this.isRunningInterval) return;
+        this.isRunningInterval = true;
+        this.lastTickTime = Date.now();
 
-            const now = Date.now();
-            const delta = now - this.lastTickTime;
-            this.lastTickTime = now;
-
-            if (this.mode === 'stopwatch') {
-                this.timeElapsed += delta;
-                this.dailyTotal += delta;
-                this.tags[this.currentTag] = (this.tags[this.currentTag] || 0) + delta;
-                this.onTick(this.getState());
-            } else if (this.mode === 'pomodoro') {
-                if (this.timeRemaining > 0) {
-                    this.timeRemaining -= delta;
-                    this.dailyTotal += delta; // Pomodoro counts as focus time
-                    this.tags[this.currentTag] = (this.tags[this.currentTag] || 0) + delta;
-                    if (this.timeRemaining <= 0) {
-                        this.timeRemaining = 0;
-                        this.pause();
-                        this.onComplete();
-                    }
-                    this.onTick(this.getState());
-                }
-            } else if (this.mode === 'break') {
-                if (this.timeRemaining > 0) {
-                    this.timeRemaining -= delta;
-                    if (this.timeRemaining <= 0) {
-                        this.timeRemaining = 0;
-                        this.pause();
-                        this.onComplete();
-                    }
-                    this.onTick(this.getState());
-                }
-            }
-            
-            if (now - this.lastSavedTime > 1000) {
-                this.saveState();
-                this.lastSavedTime = now;
-            }
-        }, 30); // roughly 30 FPS for smooth centiseconds
+        if (this.worker) {
+            this.worker.postMessage('start');
+        } else {
+            this.interval = setInterval(() => this._handleTick(), 30);
+        }
     }
 
     _stopInterval() {
+        this.isRunningInterval = false;
+        if (this.worker) {
+            this.worker.postMessage('stop');
+        }
         if (this.interval) {
             clearInterval(this.interval);
             this.interval = null;
+        }
+    }
+
+    _handleTick() {
+        this.checkDate(); // Ensure stats reset if midnight passes while running
+
+        const now = Date.now();
+        const delta = now - this.lastTickTime;
+        this.lastTickTime = now;
+
+        // Sleep / suspend gap detection:
+        // If delta exceeds threshold, the computer was put to sleep or suspended.
+        // We discard the sleep delta and auto-pause to prevent false time inflation.
+        if (delta > SLEEP_THRESHOLD_MS) {
+            console.info(`[FocusTimer] System sleep gap detected (${Math.round(delta / 1000)}s). Auto-pausing timer.`);
+            this.pause();
+            if (this.onSleepPause) {
+                this.onSleepPause(delta);
+            }
+            return;
+        }
+
+        if (this.mode === 'stopwatch') {
+            this.timeElapsed += delta;
+            this.dailyTotal += delta;
+            this.tags[this.currentTag] = (this.tags[this.currentTag] || 0) + delta;
+            this.onTick(this.getState());
+        } else if (this.mode === 'pomodoro') {
+            if (this.timeRemaining > 0) {
+                this.timeRemaining -= delta;
+                this.dailyTotal += delta; // Pomodoro counts as focus time
+                this.tags[this.currentTag] = (this.tags[this.currentTag] || 0) + delta;
+                if (this.timeRemaining <= 0) {
+                    this.timeRemaining = 0;
+                    this.pause();
+                    this.onComplete();
+                }
+                this.onTick(this.getState());
+            }
+        } else if (this.mode === 'break') {
+            if (this.timeRemaining > 0) {
+                this.timeRemaining -= delta;
+                if (this.timeRemaining <= 0) {
+                    this.timeRemaining = 0;
+                    this.pause();
+                    this.onComplete();
+                }
+                this.onTick(this.getState());
+            }
+        }
+        
+        if (now - this.lastSavedTime > 1000) {
+            this.saveState();
+            this.lastSavedTime = now;
         }
     }
 
@@ -386,6 +482,25 @@ export class FocusTimer {
         if (updated) {
             this.saveState();
             this.onTick(this.getState());
+        }
+    }
+
+    destroy() {
+        this._stopInterval();
+        if (this.worker) {
+            try { this.worker.terminate(); } catch (e) {}
+            this.worker = null;
+        }
+        if (this.channel) {
+            try { this.channel.close(); } catch (e) {}
+            this.channel = null;
+        }
+        if (this.dateCheckInterval) {
+            clearInterval(this.dateCheckInterval);
+            this.dateCheckInterval = null;
+        }
+        if (typeof document !== 'undefined' && this._handleVisibilityChange) {
+            document.removeEventListener('visibilitychange', this._handleVisibilityChange);
         }
     }
 }

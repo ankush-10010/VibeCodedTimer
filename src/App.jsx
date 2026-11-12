@@ -21,7 +21,7 @@ import { api } from '../convex/_generated/api';
 import { Routes, Route, Navigate, NavLink, useNavigate, useLocation } from 'react-router-dom';
 
 function App() {
-  const { mode, isRunning, timeRemaining, timeElapsed, dailyTotal, laps, tags, currentTag, start, pause, reset, lap, setMode, setTag, setDuration, formatTime, syncFromDb, showShortcuts, setShowShortcuts, autoChain, setAutoChain, focusMode, setFocusMode } = useTimer();
+  const { mode, isRunning, timeRemaining, timeElapsed, dailyTotal, laps, tags, currentTag, start, pause, reset, lap, setMode, setTag, setDuration, formatTime, syncFromDb, showShortcuts, setShowShortcuts, autoChain, setAutoChain, focusMode, setFocusMode, sleepNotice, dismissSleepNotice } = useTimer();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -341,6 +341,22 @@ function App() {
     <>
       <SpotifyWidget ref={spotifyRef} isOpen={activeWidget === 'music'} onClose={() => setActiveWidget(null)} onPlaybackChange={setSpotifyPlayback} />
       <BackgroundLayer backgroundType={backgroundType} />
+
+      {/* Device Sleep Recovery Notice */}
+      {sleepNotice && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[80] pointer-events-auto flex items-center gap-3 px-5 py-2.5 rounded-full bg-[#18181b]/95 border border-white/20 text-white backdrop-blur-2xl shadow-[0_10px_30px_rgba(0,0,0,0.8)] animate-fade-in text-xs md:text-sm">
+          <span className="material-symbols-outlined text-amber-400 text-lg">bedtime</span>
+          <span>Timer paused while your device was asleep {sleepNotice.durationText ? `(${sleepNotice.durationText})` : ''}</span>
+          <button 
+            onClick={dismissSleepNotice} 
+            className="ml-1 text-white/50 hover:text-white transition-colors flex items-center"
+            title="Dismiss"
+          >
+            <span className="material-symbols-outlined text-sm">close</span>
+          </button>
+        </div>
+      )}
+
       {/* Focus Mode Dimmer */}
       <div 
         className={`fixed inset-0 pointer-events-none transition-all duration-1000 z-0 ${focusMode && isRunning ? 'opacity-100 bg-black/60' : 'opacity-0 bg-transparent'}`} 
